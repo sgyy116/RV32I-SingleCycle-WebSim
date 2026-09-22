@@ -1,0 +1,2577 @@
+{
+  "_comment": "单周期 RV32I 数据通路。坐标 = 原始像素(1415x953)，scale=1.7 放大成 2405x1620 渲染。部件位置与端口位置按示意图还原；控制信号名取自后端 rv_control.hpp；ALU 操作数与写回按后端 rv_core.cpp 的两级 2 选 1 实现。",
+  "scale": 1.7,
+  "canvas": {
+    "width": 2405,
+    "height": 1620,
+    "background": "#ffffff"
+  },
+  "modules": [
+    {
+      "id": "reset",
+      "label": "reset",
+      "shape": "text",
+      "group": "SRC",
+      "x": 5,
+      "y": 519,
+      "w": 48,
+      "h": 28,
+      "tip": "复位信号源（示意图左侧文字标签）。后端 reset() 把 m_pc 置 0x80000000、清 CSR"
+    },
+    {
+      "id": "clkmod",
+      "label": "clock",
+      "shape": "text",
+      "group": "SRC",
+      "x": 66,
+      "y": 601,
+      "w": 62,
+      "h": 22,
+      "tip": "时钟信号源（示意图里的 clock 文字标签）。竖直主干从它引出，下行到底部的水平主干，再分叉给 PC / 指令存储器 / 寄存器堆 / 数据存储器"
+    },
+    {
+      "id": "PC",
+      "label": "PC",
+      "shape": "rect",
+      "group": "IF",
+      "x": 106,
+      "y": 436,
+      "w": 54,
+      "h": 147,
+      "tip": "程序计数器。左边缘收 pc_next 与 reset，右边缘出 pc，底边收 clock"
+    },
+    {
+      "id": "const4",
+      "label": "4",
+      "shape": "text",
+      "group": "IF",
+      "x": 163,
+      "y": 283,
+      "w": 16,
+      "h": 22,
+      "tip": "常量 4（示意图里就是个光秃秃的数字，没有框）"
+    },
+    {
+      "id": "const0",
+      "label": "0",
+      "shape": "text",
+      "group": "IF",
+      "x": 175,
+      "y": 536,
+      "w": 14,
+      "h": 22,
+      "tip": "常量 0。同时接到指令存储器的 d 与 we —— 示意图把只读指令存储器也画了写端口"
+    },
+    {
+      "id": "pc4adder",
+      "label": "ADD",
+      "shape": "alu",
+      "group": "IF",
+      "x": 267,
+      "y": 265,
+      "w": 73,
+      "h": 161,
+      "tip": "PC+4 加法器。两个输入在左（4 与 pc），输出在右（pc_add4）。形状与主 ALU 同款：左边全高、右边收窄、凹口开在输入侧"
+    },
+    {
+      "id": "imem",
+      "label": "指令存储器",
+      "sub": "(异步)",
+      "shape": "rect",
+      "group": "IF",
+      "x": 272,
+      "y": 456,
+      "w": 166,
+      "h": 221,
+      "tip": "指令存储器。端口名照抄示意图：a / d / we / clk / spo。示意图画成独立的一块（哈佛），后端其实只有一块 m_mem 同时供取指与访存（冯·诺依曼）"
+    },
+    {
+      "id": "pcmux1",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "IF",
+      "x": 212,
+      "y": 152,
+      "w": 32,
+      "h": 87,
+      "tip": "最左边的 MUX，输出 pc_next 回 PC。0 口接 pc_add4，1 口接右边 MUX 的输出，选择信号从上方虚线来"
+    },
+    {
+      "id": "pcmux2",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "IF",
+      "x": 376,
+      "y": 136,
+      "w": 32,
+      "h": 85,
+      "tip": "第二个 MUX。0 口接右边（pcmux4 输出），1 口接 pcmux3 输出，选择信号 is_jump 从上方虚线来"
+    },
+    {
+      "id": "pcmux3",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "IF",
+      "x": 442,
+      "y": 183,
+      "w": 31,
+      "h": 78,
+      "tip": "第三个 MUX。0 口接 pc+imm，1 口接 &~1 的结果（JALR 目标），选择信号 is_jalr 从下方虚线来"
+    },
+    {
+      "id": "pcmux4",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "IF",
+      "x": 635,
+      "y": 112,
+      "w": 29,
+      "h": 94,
+      "tip": "第四个 MUX（最靠右）。0 口接 pc_add4，1 口接 pc+imm，选择信号 taken 从上方来。输出往左回 pcmux2"
+    },
+    {
+      "id": "taken",
+      "label": "taken",
+      "shape": "circle",
+      "group": "EX",
+      "x": 600.5,
+      "y": 20,
+      "w": 98,
+      "h": 54,
+      "tip": "分支成立判断。左端收 is_beq，右端收 alu_zf，输出向下进 pcmux4 的选择端"
+    },
+    {
+      "id": "decoder",
+      "label": "译码器",
+      "shape": "rect",
+      "group": "ID",
+      "x": 524,
+      "y": 220,
+      "w": 50,
+      "h": 464,
+      "tip": "译码器（高竖条）。左侧收指令，右侧出两个读地址、写使能、写地址给寄存器堆；其余控制信号走虚线"
+    },
+    {
+      "id": "regfile",
+      "label": "寄存器堆",
+      "shape": "rect",
+      "group": "ID",
+      "x": 638,
+      "y": 410,
+      "w": 246,
+      "h": 248,
+      "tip": "寄存器堆。端口名照抄示意图：左侧 src1_raddr / src2_raddr / reg_wen / reg_waddr，右侧 src1_rdata / src2_rdata，底部 clock / reset / reg_wdata"
+    },
+    {
+      "id": "pcimmadder",
+      "label": "ADD",
+      "shape": "alu",
+      "group": "EX",
+      "flip": true,
+      "x": 812,
+      "y": 78,
+      "w": 57,
+      "h": 127,
+      "tip": "PC+imm 加法器。两个输入在右（PC 与 imm），输出在左。形状是镜像的：右边全高、凹口开在右"
+    },
+    {
+      "id": "alu",
+      "label": "ALU",
+      "sub": "ZF OF F",
+      "shape": "alu",
+      "group": "EX",
+      "x": 1062,
+      "y": 388,
+      "w": 110,
+      "h": 294,
+      "tip": "主 ALU。两个输入在左（a / b），右侧出 F 与 ZF。输出 F 同时去数据存储器、写回 MUX 和 &~1"
+    },
+    {
+      "id": "muxa",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "EX",
+      "x": 998,
+      "y": 414,
+      "w": 30,
+      "h": 92,
+      "tip": "ALU 的 a 输入选择。1 口在上、0 口在下，选择信号 src1_ren 从上方虚线来"
+    },
+    {
+      "id": "muxb",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "EX",
+      "x": 998,
+      "y": 565,
+      "w": 30,
+      "h": 89,
+      "tip": "ALU 的 b 输入选择。1 口在上、0 口在下，选择信号 src2_ren 从下方虚线来"
+    },
+    {
+      "id": "wbmux",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "WB",
+      "x": 980,
+      "y": 709,
+      "w": 29,
+      "h": 91,
+      "tip": "写回数据选择。0 口在上（imm）、1 口在下（pc_add4），选择信号在下方。输出往左回寄存器堆的 reg_wdata"
+    },
+    {
+      "id": "jalrclean",
+      "label": "&~1",
+      "shape": "circle",
+      "group": "EX",
+      "x": 655,
+      "y": 855,
+      "w": 70,
+      "h": 34,
+      "tip": "JALR 目标地址清最低位。输入从右边来（ALU 输出绕下来的线），输出往左再往上回到 pcmux3 的 1 口"
+    },
+    {
+      "id": "dmem",
+      "label": "数据存储器",
+      "sub": "(异步)",
+      "shape": "rect",
+      "group": "MEM",
+      "x": 1258,
+      "y": 502,
+      "w": 122,
+      "h": 252,
+      "tip": "数据存储器。端口名照抄示意图：we / a / spo / d / clk"
+    },
+    {
+      "id": "muxa0",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "EX",
+      "x": 908,
+      "y": 400,
+      "w": 30,
+      "h": 92,
+      "tip": "ALU a 操作数的第一级。0 口=rs1，1 口=imm，选择 is_lui。后端 rv_core.cpp:285 op1 = is_lui ? imm : rs1_val"
+    },
+    {
+      "id": "wbmux0",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "WB",
+      "x": 1160,
+      "y": 760,
+      "w": 29,
+      "h": 91,
+      "tip": "写回数据的第一级。0 口=ALU 结果，1 口=内存读出，选择 mem_to_reg。后端 rv_core.cpp:363"
+    },
+    {
+      "id": "pcmux5",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "TRAP",
+      "x": 46,
+      "y": 152,
+      "w": 30,
+      "h": 88,
+      "tip": "PC 源 5 选 1 的第 5 级：trap 发生时 PC 强制跳到 mtvec。优先级最高，串在最靠近 PC 的位置，对应后端 raise_trap() 后立刻 return。"
+    },
+    {
+      "id": "pcmux6",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "TRAP",
+      "x": 130,
+      "y": 152,
+      "w": 30,
+      "h": 88,
+      "tip": "PC 源的第 4 级：mret 执行时 PC 跳回 mepc。与 trap 互斥，串在 trap 级的下一级。"
+    },
+    {
+      "id": "trapunit",
+      "label": "trap 判据",
+      "shape": "rect",
+      "group": "TRAP",
+      "x": 76,
+      "y": 800,
+      "w": 110,
+      "h": 80,
+      "sub": "异常 / 中断",
+      "tip": "四路触发源的汇合点：非法指令、ecall、ebreak 来自译码器，计时器中断来自 CSR（mtime>=mtimecmp 且 mie.MTIE 且 mstatus.MIE）。任一路成立就拉高 trap_taken，PC 立刻改跳 mtvec。"
+    },
+    {
+      "id": "csr",
+      "label": "CSR 寄存器组",
+      "shape": "rect",
+      "group": "TRAP",
+      "x": 280,
+      "y": 782,
+      "w": 150,
+      "h": 100,
+      "sub": "mtvec/mepc/mcause/mstatus/mie/mip",
+      "tip": "机器模式控制状态寄存器。写数据来自 rs1，地址来自指令的 csr 字段；读出的旧值走 wb.source=\"CSR\" 这一路写回 rd。"
+    },
+    {
+      "id": "wbmux1",
+      "label": "MUX",
+      "shape": "mux",
+      "group": "WB",
+      "x": 1060,
+      "y": 710,
+      "w": 30,
+      "h": 88,
+      "tip": "写回源第 3 级：CSR 指令读出的旧值。后端里它是最后覆盖的，所以串在 pc+4 那级之后，但 CSR 指令不会同时是 jump/jalr，两者等价。"
+    }
+  ],
+  "ports": [
+    {
+      "id": "reset.out",
+      "module": "reset",
+      "side": "right",
+      "offset": 28,
+      "label": ""
+    },
+    {
+      "id": "clkmod.out",
+      "module": "clkmod",
+      "side": "right",
+      "offset": 11,
+      "label": ""
+    },
+    {
+      "id": "PC.pc_next",
+      "module": "PC",
+      "side": "left",
+      "offset": 46,
+      "label": ""
+    },
+    {
+      "id": "PC.reset_in",
+      "module": "PC",
+      "side": "left",
+      "offset": 111,
+      "label": ""
+    },
+    {
+      "id": "PC.pc_out",
+      "module": "PC",
+      "side": "right",
+      "offset": 72
+    },
+    {
+      "id": "PC.clk_in",
+      "module": "PC",
+      "side": "bottom",
+      "offset": 29,
+      "label": ""
+    },
+    {
+      "id": "const4.out",
+      "module": "const4",
+      "side": "right",
+      "offset": 13,
+      "label": ""
+    },
+    {
+      "id": "const0.out",
+      "module": "const0",
+      "side": "right",
+      "offset": 11,
+      "label": ""
+    },
+    {
+      "id": "pc4adder.a1",
+      "module": "pc4adder",
+      "side": "left",
+      "offset": 31,
+      "label": ""
+    },
+    {
+      "id": "pc4adder.a2",
+      "module": "pc4adder",
+      "side": "left",
+      "offset": 129,
+      "label": ""
+    },
+    {
+      "id": "pc4adder.out",
+      "module": "pc4adder",
+      "side": "right",
+      "offset": 79,
+      "label": ""
+    },
+    {
+      "id": "imem.a",
+      "module": "imem",
+      "side": "left",
+      "offset": 52,
+      "label": "a"
+    },
+    {
+      "id": "imem.d",
+      "module": "imem",
+      "side": "left",
+      "offset": 91,
+      "label": "d"
+    },
+    {
+      "id": "imem.we",
+      "module": "imem",
+      "side": "left",
+      "offset": 126,
+      "label": "we"
+    },
+    {
+      "id": "imem.clk",
+      "module": "imem",
+      "side": "left",
+      "offset": 174,
+      "label": "clk"
+    },
+    {
+      "id": "imem.spo",
+      "module": "imem",
+      "side": "right",
+      "offset": 89,
+      "label": "spo"
+    },
+    {
+      "id": "pcmux1.m1_1",
+      "module": "pcmux1",
+      "side": "right",
+      "offset": 28,
+      "label": "1"
+    },
+    {
+      "id": "pcmux1.m1_0",
+      "module": "pcmux1",
+      "side": "right",
+      "offset": 59,
+      "label": "0"
+    },
+    {
+      "id": "pcmux1.m1_out",
+      "module": "pcmux1",
+      "side": "left",
+      "offset": 44,
+      "label": ""
+    },
+    {
+      "id": "pcmux1.m1_sel",
+      "module": "pcmux1",
+      "side": "bottom",
+      "offset": 16,
+      "label": ""
+    },
+    {
+      "id": "pcmux2.m2_1",
+      "module": "pcmux2",
+      "side": "right",
+      "offset": 61,
+      "label": "1"
+    },
+    {
+      "id": "pcmux2.m2_0",
+      "module": "pcmux2",
+      "side": "right",
+      "offset": 24,
+      "label": "0"
+    },
+    {
+      "id": "pcmux2.m2_out",
+      "module": "pcmux2",
+      "side": "left",
+      "offset": 44,
+      "label": ""
+    },
+    {
+      "id": "pcmux2.m2_sel",
+      "module": "pcmux2",
+      "side": "top",
+      "offset": 16,
+      "label": ""
+    },
+    {
+      "id": "pcmux3.m3_1",
+      "module": "pcmux3",
+      "side": "right",
+      "offset": 55,
+      "label": "1"
+    },
+    {
+      "id": "pcmux3.m3_0",
+      "module": "pcmux3",
+      "side": "right",
+      "offset": 23,
+      "label": "0"
+    },
+    {
+      "id": "pcmux3.m3_out",
+      "module": "pcmux3",
+      "side": "left",
+      "offset": 40,
+      "label": ""
+    },
+    {
+      "id": "pcmux3.m3_sel",
+      "module": "pcmux3",
+      "side": "bottom",
+      "offset": 15.5,
+      "label": ""
+    },
+    {
+      "id": "pcmux4.m4_1",
+      "module": "pcmux4",
+      "side": "right",
+      "offset": 30,
+      "label": "1"
+    },
+    {
+      "id": "pcmux4.m4_0",
+      "module": "pcmux4",
+      "side": "right",
+      "offset": 58,
+      "label": "0"
+    },
+    {
+      "id": "pcmux4.m4_out",
+      "module": "pcmux4",
+      "side": "left",
+      "offset": 48,
+      "label": ""
+    },
+    {
+      "id": "pcmux4.m4_sel",
+      "module": "pcmux4",
+      "side": "top",
+      "offset": 14.5,
+      "label": ""
+    },
+    {
+      "id": "taken.beq_in",
+      "module": "taken",
+      "side": "left",
+      "offset": 27,
+      "label": ""
+    },
+    {
+      "id": "taken.zf_in",
+      "module": "taken",
+      "side": "right",
+      "offset": 27,
+      "label": ""
+    },
+    {
+      "id": "taken.out",
+      "module": "taken",
+      "side": "bottom",
+      "offset": 49,
+      "label": ""
+    },
+    {
+      "id": "regfile.ra1",
+      "module": "regfile",
+      "side": "left",
+      "offset": 62
+    },
+    {
+      "id": "regfile.ra2",
+      "module": "regfile",
+      "side": "left",
+      "offset": 108
+    },
+    {
+      "id": "regfile.wen",
+      "module": "regfile",
+      "side": "left",
+      "offset": 166
+    },
+    {
+      "id": "regfile.waddr",
+      "module": "regfile",
+      "side": "left",
+      "offset": 200
+    },
+    {
+      "id": "regfile.rd1",
+      "module": "regfile",
+      "side": "right",
+      "offset": 60
+    },
+    {
+      "id": "regfile.rd2",
+      "module": "regfile",
+      "side": "right",
+      "offset": 178
+    },
+    {
+      "id": "regfile.clk_in",
+      "module": "regfile",
+      "side": "bottom",
+      "offset": 30
+    },
+    {
+      "id": "regfile.rst_in",
+      "module": "regfile",
+      "side": "bottom",
+      "offset": 90
+    },
+    {
+      "id": "regfile.wdata",
+      "module": "regfile",
+      "side": "bottom",
+      "offset": 174
+    },
+    {
+      "id": "pcimmadder.a_pc",
+      "module": "pcimmadder",
+      "side": "right",
+      "offset": 26,
+      "label": "",
+      "net": "pc"
+    },
+    {
+      "id": "pcimmadder.a_imm",
+      "module": "pcimmadder",
+      "side": "right",
+      "offset": 101,
+      "label": ""
+    },
+    {
+      "id": "pcimmadder.out",
+      "module": "pcimmadder",
+      "side": "left",
+      "offset": 64,
+      "label": ""
+    },
+    {
+      "id": "alu.a",
+      "module": "alu",
+      "side": "left",
+      "offset": 79
+    },
+    {
+      "id": "alu.b",
+      "module": "alu",
+      "side": "left",
+      "offset": 222
+    },
+    {
+      "id": "alu.f_out",
+      "module": "alu",
+      "side": "right",
+      "offset": 150
+    },
+    {
+      "id": "alu.zf_out",
+      "module": "alu",
+      "side": "right",
+      "offset": 94,
+      "label": "ZF"
+    },
+    {
+      "id": "muxa.ma_1",
+      "module": "muxa",
+      "side": "left",
+      "offset": 26,
+      "label": "1",
+      "net": "pc"
+    },
+    {
+      "id": "muxa.ma_0",
+      "module": "muxa",
+      "side": "left",
+      "offset": 53,
+      "label": "0"
+    },
+    {
+      "id": "muxa.ma_out",
+      "module": "muxa",
+      "side": "right",
+      "offset": 53,
+      "label": ""
+    },
+    {
+      "id": "muxa.ma_sel",
+      "module": "muxa",
+      "side": "top",
+      "offset": 15,
+      "label": ""
+    },
+    {
+      "id": "muxb.mb_1",
+      "module": "muxb",
+      "side": "left",
+      "offset": 23,
+      "label": "1"
+    },
+    {
+      "id": "muxb.mb_0",
+      "module": "muxb",
+      "side": "left",
+      "offset": 62,
+      "label": "0"
+    },
+    {
+      "id": "muxb.mb_out",
+      "module": "muxb",
+      "side": "right",
+      "offset": 45,
+      "label": ""
+    },
+    {
+      "id": "muxb.mb_sel",
+      "module": "muxb",
+      "side": "bottom",
+      "offset": 15,
+      "label": ""
+    },
+    {
+      "id": "wbmux.wb_0",
+      "module": "wbmux",
+      "side": "right",
+      "offset": 32,
+      "label": "0"
+    },
+    {
+      "id": "wbmux.wb_1",
+      "module": "wbmux",
+      "side": "right",
+      "offset": 60,
+      "label": "1",
+      "net": "pc+4"
+    },
+    {
+      "id": "wbmux.wb_out",
+      "module": "wbmux",
+      "side": "left",
+      "offset": 46,
+      "label": ""
+    },
+    {
+      "id": "wbmux.wb_sel",
+      "module": "wbmux",
+      "side": "bottom",
+      "offset": 14.5,
+      "label": ""
+    },
+    {
+      "id": "jalrclean.in",
+      "module": "jalrclean",
+      "side": "right",
+      "offset": 17,
+      "label": ""
+    },
+    {
+      "id": "jalrclean.out",
+      "module": "jalrclean",
+      "side": "left",
+      "offset": 17,
+      "label": ""
+    },
+    {
+      "id": "dmem.we",
+      "module": "dmem",
+      "side": "top",
+      "offset": 62,
+      "label": "we"
+    },
+    {
+      "id": "dmem.a",
+      "module": "dmem",
+      "side": "left",
+      "offset": 36,
+      "label": "a"
+    },
+    {
+      "id": "dmem.spo",
+      "module": "dmem",
+      "side": "left",
+      "offset": 208
+    },
+    {
+      "id": "dmem.d",
+      "module": "dmem",
+      "side": "bottom",
+      "offset": 44,
+      "label": "d"
+    },
+    {
+      "id": "dmem.clk",
+      "module": "dmem",
+      "side": "bottom",
+      "offset": 104,
+      "label": "clk"
+    },
+    {
+      "id": "decoder.inst_in",
+      "module": "decoder",
+      "side": "left",
+      "offset": 325,
+      "label": ""
+    },
+    {
+      "id": "decoder.beq_out",
+      "module": "decoder",
+      "side": "top",
+      "offset": 44,
+      "label": ""
+    },
+    {
+      "id": "decoder.sw_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 4,
+      "label": ""
+    },
+    {
+      "id": "decoder.alusrc_out",
+      "module": "decoder",
+      "side": "bottom",
+      "offset": 34,
+      "label": ""
+    },
+    {
+      "id": "decoder.auipc_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 44,
+      "label": ""
+    },
+    {
+      "id": "decoder.islui_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 64,
+      "label": ""
+    },
+    {
+      "id": "decoder.imm_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 84,
+      "label": ""
+    },
+    {
+      "id": "decoder.aluop_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 104,
+      "label": ""
+    },
+    {
+      "id": "decoder.memtoreg_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 124,
+      "label": ""
+    },
+    {
+      "id": "decoder.ra1_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 252
+    },
+    {
+      "id": "decoder.ra2_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 298
+    },
+    {
+      "id": "decoder.wen_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 356
+    },
+    {
+      "id": "decoder.waddr_out",
+      "module": "decoder",
+      "side": "right",
+      "offset": 390
+    },
+    {
+      "id": "decoder.link_out",
+      "module": "decoder",
+      "side": "bottom",
+      "offset": 10,
+      "label": ""
+    },
+    {
+      "id": "muxa0.ma0_0",
+      "module": "muxa0",
+      "side": "left",
+      "offset": 70,
+      "label": "0"
+    },
+    {
+      "id": "muxa0.ma0_sel",
+      "module": "muxa0",
+      "side": "top",
+      "offset": 15,
+      "label": ""
+    },
+    {
+      "id": "muxa0.ma0_1",
+      "module": "muxa0",
+      "side": "left",
+      "offset": 22,
+      "label": "1"
+    },
+    {
+      "id": "muxa0.ma0_out",
+      "module": "muxa0",
+      "side": "right",
+      "offset": 46,
+      "label": ""
+    },
+    {
+      "id": "wbmux0.wb0_sel",
+      "module": "wbmux0",
+      "side": "top",
+      "offset": 14.5,
+      "label": ""
+    },
+    {
+      "id": "wbmux0.wb0_0",
+      "module": "wbmux0",
+      "side": "right",
+      "offset": 22,
+      "label": "0"
+    },
+    {
+      "id": "wbmux0.wb0_1",
+      "module": "wbmux0",
+      "side": "right",
+      "offset": 46,
+      "label": "1"
+    },
+    {
+      "id": "wbmux0.wb0_out",
+      "module": "wbmux0",
+      "side": "left",
+      "offset": 15,
+      "label": ""
+    },
+    {
+      "id": "alu.op",
+      "module": "alu",
+      "side": "left",
+      "offset": 272
+    },
+    {
+      "id": "decoder.jalr_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 60
+    },
+    {
+      "id": "decoder.pcsel_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 220
+    },
+    {
+      "id": "decoder.jumpjalr_out",
+      "module": "decoder",
+      "side": "top",
+      "offset": 24
+    },
+    {
+      "id": "pcmux6.m6_0",
+      "module": "pcmux6",
+      "side": "right",
+      "offset": 44.0,
+      "label": "0"
+    },
+    {
+      "id": "pcmux6.m6_1",
+      "module": "pcmux6",
+      "side": "right",
+      "offset": 74,
+      "label": "1",
+      "net": "mepc"
+    },
+    {
+      "id": "pcmux6.m6_out",
+      "module": "pcmux6",
+      "side": "left",
+      "offset": 44.0,
+      "label": ""
+    },
+    {
+      "id": "pcmux6.m6_sel",
+      "module": "pcmux6",
+      "side": "bottom",
+      "offset": 15.0,
+      "label": "",
+      "net": "is_mret"
+    },
+    {
+      "id": "pcmux5.m5_0",
+      "module": "pcmux5",
+      "side": "right",
+      "offset": 44.0,
+      "label": "0"
+    },
+    {
+      "id": "pcmux5.m5_1",
+      "module": "pcmux5",
+      "side": "right",
+      "offset": 74,
+      "label": "1",
+      "net": "mtvec"
+    },
+    {
+      "id": "pcmux5.m5_out",
+      "module": "pcmux5",
+      "side": "left",
+      "offset": 44.0,
+      "label": ""
+    },
+    {
+      "id": "pcmux5.m5_sel",
+      "module": "pcmux5",
+      "side": "bottom",
+      "offset": 15.0,
+      "label": "",
+      "net": "trap_taken"
+    },
+    {
+      "id": "decoder.csr_addr_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 94,
+      "label": "",
+      "net": "csr_addr"
+    },
+    {
+      "id": "decoder.csr_we_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 122,
+      "label": "",
+      "net": "csr_we"
+    },
+    {
+      "id": "decoder.is_csr_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 150,
+      "label": "",
+      "net": "is_csr"
+    },
+    {
+      "id": "decoder.illegal_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 178,
+      "label": "",
+      "net": "illegal"
+    },
+    {
+      "id": "decoder.ecall_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 242,
+      "label": "",
+      "net": "ecall"
+    },
+    {
+      "id": "decoder.ebreak_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 270,
+      "label": "",
+      "net": "ebreak"
+    },
+    {
+      "id": "decoder.mret_out",
+      "module": "decoder",
+      "side": "left",
+      "offset": 298,
+      "label": "",
+      "net": "is_mret"
+    },
+    {
+      "id": "trapunit.illegal_in",
+      "module": "trapunit",
+      "side": "left",
+      "offset": 12,
+      "label": "",
+      "net": "illegal"
+    },
+    {
+      "id": "trapunit.ecall_in",
+      "module": "trapunit",
+      "side": "left",
+      "offset": 32,
+      "label": "",
+      "net": "ecall"
+    },
+    {
+      "id": "trapunit.ebreak_in",
+      "module": "trapunit",
+      "side": "left",
+      "offset": 52,
+      "label": "",
+      "net": "ebreak"
+    },
+    {
+      "id": "trapunit.irq_in",
+      "module": "trapunit",
+      "side": "right",
+      "offset": 30,
+      "label": ""
+    },
+    {
+      "id": "trapunit.taken_out",
+      "module": "trapunit",
+      "side": "bottom",
+      "offset": 55,
+      "label": "",
+      "net": "trap_taken"
+    },
+    {
+      "id": "csr.addr_in",
+      "module": "csr",
+      "side": "left",
+      "offset": 15,
+      "label": "",
+      "net": "csr_addr"
+    },
+    {
+      "id": "csr.we_in",
+      "module": "csr",
+      "side": "left",
+      "offset": 40,
+      "label": "",
+      "net": "csr_we"
+    },
+    {
+      "id": "csr.wdata_in",
+      "module": "csr",
+      "side": "left",
+      "offset": 65,
+      "label": "",
+      "net": "src1_rdata"
+    },
+    {
+      "id": "csr.irq_out",
+      "module": "csr",
+      "side": "bottom",
+      "offset": 10,
+      "label": ""
+    },
+    {
+      "id": "csr.rdata_out",
+      "module": "csr",
+      "side": "bottom",
+      "offset": 45,
+      "label": "",
+      "net": "csr_old"
+    },
+    {
+      "id": "csr.mtvec_out",
+      "module": "csr",
+      "side": "bottom",
+      "offset": 90,
+      "label": "",
+      "net": "mtvec"
+    },
+    {
+      "id": "csr.mepc_out",
+      "module": "csr",
+      "side": "bottom",
+      "offset": 135,
+      "label": "",
+      "net": "mepc"
+    },
+    {
+      "id": "wbmux1.wb1_1",
+      "module": "wbmux1",
+      "side": "right",
+      "offset": 48,
+      "label": "1",
+      "net": "csr_old"
+    },
+    {
+      "id": "wbmux1.wb1_0",
+      "module": "wbmux1",
+      "side": "right",
+      "offset": 65,
+      "label": "0"
+    },
+    {
+      "id": "wbmux1.wb1_out",
+      "module": "wbmux1",
+      "side": "left",
+      "offset": 31,
+      "label": ""
+    },
+    {
+      "id": "wbmux1.wb1_sel",
+      "module": "wbmux1",
+      "side": "bottom",
+      "offset": 15,
+      "label": "",
+      "net": "is_csr"
+    },
+    {
+      "id": "clkmod.out_w",
+      "module": "clkmod",
+      "side": "left",
+      "offset": 11,
+      "label": ""
+    }
+  ],
+  "wires": [
+    {
+      "id": "w_pc_imem",
+      "from": "PC.pc_out",
+      "to": "imem.a",
+      "kind": "data",
+      "signal": "state.pc",
+      "label": "pc",
+      "points": [
+        [
+          160,
+          508
+        ],
+        [
+          272,
+          508
+        ]
+      ]
+    },
+    {
+      "id": "w_pc_add4",
+      "from": "PC.pc_out",
+      "to": "pc4adder.a2",
+      "kind": "data",
+      "signal": "state.pc",
+      "points": [
+        [
+          160,
+          508
+        ],
+        [
+          212,
+          508
+        ],
+        [
+          212,
+          394
+        ],
+        [
+          267,
+          394
+        ]
+      ]
+    },
+    {
+      "id": "w_c4_add4",
+      "from": "const4.out",
+      "to": "pc4adder.a1",
+      "kind": "data",
+      "signal": null,
+      "label": "4",
+      "points": [
+        [
+          179,
+          296
+        ],
+        [
+          267,
+          296
+        ]
+      ]
+    },
+    {
+      "id": "w_add4_m1",
+      "from": "pc4adder.out",
+      "to": "pcmux1.m1_0",
+      "kind": "data",
+      "signal": "derived:pc_plus_4",
+      "label": "pc+4",
+      "points": [
+        [
+          340,
+          344
+        ],
+        [
+          352,
+          344
+        ],
+        [
+          352,
+          211
+        ],
+        [
+          244,
+          211
+        ]
+      ]
+    },
+    {
+      "id": "w_add4_m4",
+      "from": "pc4adder.out",
+      "to": "pcmux4.m4_0",
+      "kind": "data",
+      "signal": "derived:pc_plus_4",
+      "label": "pc+4",
+      "points": [
+        [
+          340,
+          344
+        ],
+        [
+          364,
+          344
+        ],
+        [
+          364,
+          88
+        ],
+        [
+          720,
+          88
+        ],
+        [
+          720,
+          170
+        ],
+        [
+          664,
+          170
+        ]
+      ]
+    },
+    {
+      "id": "w_m2_m1",
+      "from": "pcmux2.m2_out",
+      "to": "pcmux1.m1_1",
+      "kind": "data",
+      "signal": "derived:pc_next",
+      "points": [
+        [
+          376,
+          180
+        ],
+        [
+          244,
+          180
+        ]
+      ]
+    },
+    {
+      "id": "w_m3_m2",
+      "from": "pcmux3.m3_out",
+      "to": "pcmux2.m2_1",
+      "kind": "data",
+      "signal": "derived:pc_next",
+      "points": [
+        [
+          442,
+          223
+        ],
+        [
+          428,
+          223
+        ],
+        [
+          428,
+          197
+        ],
+        [
+          408,
+          197
+        ]
+      ]
+    },
+    {
+      "id": "w_m4_m2",
+      "from": "pcmux4.m4_out",
+      "to": "pcmux2.m2_0",
+      "kind": "data",
+      "signal": "derived:pc_next",
+      "points": [
+        [
+          635,
+          160
+        ],
+        [
+          408,
+          160
+        ]
+      ]
+    },
+    {
+      "id": "w_immadd_m4",
+      "from": "pcimmadder.out",
+      "to": "pcmux4.m4_1",
+      "kind": "data",
+      "signal": "derived:pc_imm",
+      "label": "pc+imm",
+      "points": [
+        [
+          812,
+          142
+        ],
+        [
+          664,
+          142
+        ]
+      ]
+    },
+    {
+      "id": "w_immadd_m3",
+      "from": "pcimmadder.out",
+      "to": "pcmux3.m3_0",
+      "kind": "data",
+      "signal": "derived:pc_imm",
+      "label": "pc+imm",
+      "points": [
+        [
+          812,
+          142
+        ],
+        [
+          800,
+          142
+        ],
+        [
+          800,
+          100
+        ],
+        [
+          510,
+          100
+        ],
+        [
+          510,
+          206
+        ],
+        [
+          473,
+          206
+        ]
+      ]
+    },
+    {
+      "id": "w_taken_m4",
+      "from": "taken.out",
+      "to": "pcmux4.m4_sel",
+      "kind": "control",
+      "signal": "state.branch.taken",
+      "points": [
+        [
+          649.5,
+          74
+        ],
+        [
+          649.5,
+          112
+        ]
+      ]
+    },
+    {
+      "id": "w_sel_m1",
+      "from": "decoder.pcsel_out",
+      "to": "pcmux1.m1_sel",
+      "kind": "control",
+      "signal": "derived:pcsel",
+      "label": "branch || jump || is_jalr",
+      "points": [
+        [
+          524,
+          440
+        ],
+        [
+          228,
+          440
+        ],
+        [
+          228,
+          239
+        ]
+      ]
+    },
+    {
+      "id": "w_sel_m2",
+      "from": "decoder.jumpjalr_out",
+      "to": "pcmux2.m2_sel",
+      "kind": "control",
+      "signal": "derived:jump_or_jalr",
+      "label": "jump || is_jalr",
+      "points": [
+        [
+          548,
+          220
+        ],
+        [
+          548,
+          120
+        ],
+        [
+          392,
+          120
+        ],
+        [
+          392,
+          136
+        ]
+      ]
+    },
+    {
+      "id": "w_sel_m3",
+      "from": "decoder.jalr_out",
+      "to": "pcmux3.m3_sel",
+      "kind": "control",
+      "signal": "state.control_signals.is_jalr",
+      "label": "is_jalr",
+      "points": [
+        [
+          524,
+          280
+        ],
+        [
+          457.5,
+          280
+        ],
+        [
+          457.5,
+          261
+        ]
+      ]
+    },
+    {
+      "id": "w_dec_beq",
+      "from": "decoder.beq_out",
+      "to": "taken.beq_in",
+      "kind": "control",
+      "signal": "state.control_signals.branch",
+      "label": "branch",
+      "points": [
+        [
+          568,
+          220
+        ],
+        [
+          568,
+          47
+        ],
+        [
+          600.5,
+          47
+        ]
+      ]
+    },
+    {
+      "id": "w_alu_zf",
+      "from": "alu.zf_out",
+      "to": "taken.zf_in",
+      "kind": "control",
+      "signal": "state.alu.zero",
+      "label": "alu_zf",
+      "points": [
+        [
+          1172,
+          482
+        ],
+        [
+          1200,
+          482
+        ],
+        [
+          1200,
+          47
+        ],
+        [
+          698.5,
+          47
+        ]
+      ]
+    },
+    {
+      "id": "w_const0_d",
+      "from": "const0.out",
+      "to": "imem.d",
+      "kind": "data",
+      "signal": null,
+      "label": "0",
+      "points": [
+        [
+          189,
+          547
+        ],
+        [
+          216,
+          547
+        ],
+        [
+          272,
+          547
+        ]
+      ]
+    },
+    {
+      "id": "w_const0_we",
+      "from": "const0.out",
+      "to": "imem.we",
+      "kind": "control",
+      "signal": null,
+      "points": [
+        [
+          189,
+          547
+        ],
+        [
+          228,
+          547
+        ],
+        [
+          228,
+          582
+        ],
+        [
+          272,
+          582
+        ]
+      ]
+    },
+    {
+      "id": "w_imem_dec",
+      "from": "imem.spo",
+      "to": "decoder.inst_in",
+      "kind": "data",
+      "signal": "state.instruction",
+      "label": "inst",
+      "points": [
+        [
+          438,
+          545
+        ],
+        [
+          524,
+          545
+        ]
+      ]
+    },
+    {
+      "id": "w_dec_ra1",
+      "from": "decoder.ra1_out",
+      "to": "regfile.ra1",
+      "kind": "control",
+      "signal": "state.instruction_fields.rs1",
+      "label": "src1_raddr",
+      "points": [
+        [
+          574,
+          472
+        ],
+        [
+          638,
+          472
+        ]
+      ]
+    },
+    {
+      "id": "w_dec_ra2",
+      "from": "decoder.ra2_out",
+      "to": "regfile.ra2",
+      "kind": "control",
+      "signal": "state.instruction_fields.rs2",
+      "label": "src2_raddr",
+      "points": [
+        [
+          574,
+          518
+        ],
+        [
+          638,
+          518
+        ]
+      ]
+    },
+    {
+      "id": "w_dec_wen",
+      "from": "decoder.wen_out",
+      "to": "regfile.wen",
+      "kind": "control",
+      "signal": "state.control_signals.reg_write",
+      "label": "reg_wen",
+      "points": [
+        [
+          574,
+          576
+        ],
+        [
+          638,
+          576
+        ]
+      ]
+    },
+    {
+      "id": "w_dec_waddr",
+      "from": "decoder.waddr_out",
+      "to": "regfile.waddr",
+      "kind": "control",
+      "signal": "state.writeback.reg_index",
+      "label": "reg_waddr",
+      "points": [
+        [
+          574,
+          610
+        ],
+        [
+          638,
+          610
+        ]
+      ]
+    },
+    {
+      "id": "w_imm_immadd",
+      "from": "decoder.imm_out",
+      "to": "pcimmadder.a_imm",
+      "kind": "data",
+      "signal": "state.immediate",
+      "points": [
+        [
+          574,
+          304
+        ],
+        [
+          884,
+          304
+        ],
+        [
+          884,
+          179
+        ],
+        [
+          869,
+          179
+        ]
+      ]
+    },
+    {
+      "id": "w_rf_ma0",
+      "from": "regfile.rd1",
+      "to": "muxa0.ma0_0",
+      "kind": "data",
+      "signal": "state.reg_reads.rs1.value",
+      "label": "src1_rdata",
+      "points": [
+        [
+          884,
+          470
+        ],
+        [
+          908,
+          470
+        ]
+      ]
+    },
+    {
+      "id": "w_imm_muxa0",
+      "from": "decoder.imm_out",
+      "to": "muxa0.ma0_1",
+      "kind": "data",
+      "signal": "state.immediate",
+      "label": "imm",
+      "points": [
+        [
+          574,
+          304
+        ],
+        [
+          896,
+          304
+        ],
+        [
+          896,
+          422
+        ],
+        [
+          908,
+          422
+        ]
+      ]
+    },
+    {
+      "id": "w_muxa0_muxa",
+      "from": "muxa0.ma0_out",
+      "to": "muxa.ma_0",
+      "kind": "data",
+      "signal": "state.alu.op1",
+      "points": [
+        [
+          938,
+          446
+        ],
+        [
+          956,
+          446
+        ],
+        [
+          956,
+          467
+        ],
+        [
+          998,
+          467
+        ]
+      ]
+    },
+    {
+      "id": "w_ma_alu",
+      "from": "muxa.ma_out",
+      "to": "alu.a",
+      "kind": "data",
+      "signal": "state.alu.op1",
+      "label": "a",
+      "points": [
+        [
+          1028,
+          467
+        ],
+        [
+          1062,
+          467
+        ]
+      ]
+    },
+    {
+      "id": "w_rf_mb1",
+      "from": "regfile.rd2",
+      "to": "muxb.mb_1",
+      "kind": "data",
+      "signal": "state.reg_reads.rs2.value",
+      "label": "src2_rdata",
+      "points": [
+        [
+          884,
+          588
+        ],
+        [
+          998,
+          588
+        ]
+      ]
+    },
+    {
+      "id": "w_imm_muxb",
+      "from": "decoder.imm_out",
+      "to": "muxb.mb_0",
+      "kind": "data",
+      "signal": "state.immediate",
+      "label": "",
+      "points": [
+        [
+          574,
+          304
+        ],
+        [
+          978,
+          304
+        ],
+        [
+          978,
+          627
+        ],
+        [
+          998,
+          627
+        ]
+      ]
+    },
+    {
+      "id": "w_mb_alu",
+      "from": "muxb.mb_out",
+      "to": "alu.b",
+      "kind": "data",
+      "signal": "state.alu.op2",
+      "label": "b",
+      "points": [
+        [
+          1028,
+          610
+        ],
+        [
+          1062,
+          610
+        ]
+      ]
+    },
+    {
+      "id": "w_alu_dmem",
+      "from": "alu.f_out",
+      "to": "dmem.a",
+      "kind": "data",
+      "signal": "state.alu.result",
+      "label": "F",
+      "points": [
+        [
+          1172,
+          538
+        ],
+        [
+          1222,
+          538
+        ],
+        [
+          1258,
+          538
+        ]
+      ]
+    },
+    {
+      "id": "w_alu_jalr",
+      "from": "alu.f_out",
+      "to": "jalrclean.in",
+      "kind": "data",
+      "signal": "state.alu.result",
+      "label": "F",
+      "points": [
+        [
+          1172,
+          538
+        ],
+        [
+          1222,
+          538
+        ],
+        [
+          1222,
+          872
+        ],
+        [
+          725,
+          872
+        ]
+      ]
+    },
+    {
+      "id": "w_jalr_m3",
+      "from": "jalrclean.out",
+      "to": "pcmux3.m3_1",
+      "kind": "data",
+      "signal": "derived:alu_result_clean",
+      "label": "&~1",
+      "points": [
+        [
+          655,
+          872
+        ],
+        [
+          452,
+          872
+        ],
+        [
+          452,
+          293
+        ],
+        [
+          497,
+          293
+        ],
+        [
+          497,
+          238
+        ],
+        [
+          473,
+          238
+        ]
+      ]
+    },
+    {
+      "id": "w_alu_wb0",
+      "from": "alu.f_out",
+      "to": "wbmux0.wb0_0",
+      "kind": "data",
+      "signal": "state.alu.result",
+      "label": "F",
+      "points": [
+        [
+          1172,
+          538
+        ],
+        [
+          1200,
+          538
+        ],
+        [
+          1200,
+          782
+        ],
+        [
+          1189,
+          782
+        ]
+      ]
+    },
+    {
+      "id": "w_dmem_wb0",
+      "from": "dmem.spo",
+      "to": "wbmux0.wb0_1",
+      "kind": "data",
+      "signal": "state.memory.read_data",
+      "label": "spo",
+      "points": [
+        [
+          1258,
+          710
+        ],
+        [
+          1250,
+          710
+        ],
+        [
+          1250,
+          806
+        ],
+        [
+          1189,
+          806
+        ]
+      ]
+    },
+    {
+      "id": "w_wb0_wb",
+      "from": "wbmux0.wb0_out",
+      "to": "wbmux1.wb1_0",
+      "kind": "data",
+      "signal": "state.writeback.data",
+      "points": [
+        [
+          1160,
+          775
+        ],
+        [
+          1090,
+          775
+        ]
+      ]
+    },
+    {
+      "id": "w_wb_rf",
+      "from": "wbmux.wb_out",
+      "to": "regfile.wdata",
+      "kind": "data",
+      "signal": "state.writeback.data",
+      "label": "reg_wdata",
+      "points": [
+        [
+          980,
+          755
+        ],
+        [
+          812,
+          755
+        ],
+        [
+          812,
+          658
+        ]
+      ]
+    },
+    {
+      "id": "w_rf_dmem",
+      "from": "regfile.rd2",
+      "to": "dmem.d",
+      "kind": "data",
+      "signal": "state.memory.write_data",
+      "label": "src2_rdata",
+      "points": [
+        [
+          884,
+          588
+        ],
+        [
+          900,
+          588
+        ],
+        [
+          900,
+          925
+        ],
+        [
+          1302,
+          925
+        ],
+        [
+          1302,
+          754
+        ]
+      ]
+    },
+    {
+      "id": "w_reset_pc",
+      "from": "reset.out",
+      "to": "PC.reset_in",
+      "kind": "clock",
+      "signal": null,
+      "label": "reset",
+      "points": [
+        [
+          53,
+          547
+        ],
+        [
+          106,
+          547
+        ]
+      ]
+    },
+    {
+      "id": "w_reset_rf",
+      "from": "reset.out",
+      "to": "regfile.rst_in",
+      "kind": "clock",
+      "signal": null,
+      "label": "reset",
+      "points": [
+        [
+          53,
+          547
+        ],
+        [
+          60,
+          547
+        ],
+        [
+          60,
+          770
+        ],
+        [
+          728,
+          770
+        ],
+        [
+          728,
+          658
+        ]
+      ]
+    },
+    {
+      "id": "w_clk_pc",
+      "from": "clkmod.out",
+      "to": "PC.clk_in",
+      "kind": "clock",
+      "signal": null,
+      "label": "clock",
+      "points": [
+        [
+          128,
+          612
+        ],
+        [
+          135,
+          612
+        ],
+        [
+          135,
+          583
+        ]
+      ]
+    },
+    {
+      "id": "w_clk_imem",
+      "from": "clkmod.out",
+      "to": "imem.clk",
+      "kind": "clock",
+      "signal": null,
+      "label": "clock",
+      "points": [
+        [
+          128,
+          612
+        ],
+        [
+          135,
+          612
+        ],
+        [
+          135,
+          630
+        ],
+        [
+          272,
+          630
+        ]
+      ]
+    },
+    {
+      "id": "w_clk_rf",
+      "from": "clkmod.out",
+      "to": "regfile.clk_in",
+      "kind": "clock",
+      "signal": null,
+      "label": "clock",
+      "points": [
+        [
+          128,
+          612
+        ],
+        [
+          135,
+          612
+        ],
+        [
+          135,
+          730
+        ],
+        [
+          668,
+          730
+        ],
+        [
+          668,
+          658
+        ]
+      ]
+    },
+    {
+      "id": "w_clk_dmem",
+      "from": "clkmod.out_w",
+      "to": "dmem.clk",
+      "kind": "clock",
+      "signal": null,
+      "label": "clock",
+      "points": [
+        [
+          66,
+          612
+        ],
+        [
+          8,
+          612
+        ],
+        [
+          8,
+          946
+        ],
+        [
+          1362,
+          946
+        ],
+        [
+          1362,
+          754
+        ]
+      ]
+    },
+    {
+      "id": "w_ctl_sw",
+      "from": "decoder.sw_out",
+      "to": "dmem.we",
+      "kind": "control",
+      "signal": "state.control_signals.mem_write",
+      "label": "mem_write",
+      "points": [
+        [
+          574,
+          224
+        ],
+        [
+          1320,
+          224
+        ],
+        [
+          1320,
+          502
+        ]
+      ]
+    },
+    {
+      "id": "w_ctl_alusrc",
+      "from": "decoder.alusrc_out",
+      "to": "muxb.mb_sel",
+      "kind": "control",
+      "signal": "state.control_signals.alu_src",
+      "label": "alu_src",
+      "points": [
+        [
+          558,
+          684
+        ],
+        [
+          558,
+          712
+        ],
+        [
+          965,
+          712
+        ],
+        [
+          965,
+          667
+        ],
+        [
+          1013,
+          667
+        ],
+        [
+          1013,
+          654
+        ]
+      ]
+    },
+    {
+      "id": "w_ctl_auipc",
+      "from": "decoder.auipc_out",
+      "to": "muxa.ma_sel",
+      "kind": "control",
+      "signal": "state.control_signals.is_auipc",
+      "label": "is_auipc",
+      "points": [
+        [
+          574,
+          264
+        ],
+        [
+          582,
+          264
+        ],
+        [
+          582,
+          386
+        ],
+        [
+          1013,
+          386
+        ],
+        [
+          1013,
+          414
+        ]
+      ]
+    },
+    {
+      "id": "w_ctl_islui",
+      "from": "decoder.islui_out",
+      "to": "muxa0.ma0_sel",
+      "kind": "control",
+      "signal": "state.control_signals.is_lui",
+      "label": "is_lui",
+      "points": [
+        [
+          574,
+          284
+        ],
+        [
+          923,
+          284
+        ],
+        [
+          923,
+          400
+        ]
+      ]
+    },
+    {
+      "id": "w_ctl_aluop",
+      "from": "decoder.aluop_out",
+      "to": "alu.op",
+      "kind": "control",
+      "signal": "state.control_signals.alu_op",
+      "label": "alu_op",
+      "points": [
+        [
+          574,
+          324
+        ],
+        [
+          604,
+          324
+        ],
+        [
+          604,
+          680
+        ],
+        [
+          1050,
+          680
+        ],
+        [
+          1050,
+          660
+        ],
+        [
+          1062,
+          660
+        ]
+      ]
+    },
+    {
+      "id": "w_ctl_memtoreg",
+      "from": "decoder.memtoreg_out",
+      "to": "wbmux0.wb0_sel",
+      "kind": "control",
+      "signal": "state.control_signals.mem_to_reg",
+      "label": "mem_to_reg",
+      "points": [
+        [
+          574,
+          344
+        ],
+        [
+          626,
+          344
+        ],
+        [
+          626,
+          694
+        ],
+        [
+          1174.5,
+          694
+        ],
+        [
+          1174.5,
+          760
+        ]
+      ]
+    },
+    {
+      "id": "w_ctl_link",
+      "from": "decoder.link_out",
+      "to": "wbmux.wb_sel",
+      "kind": "control",
+      "signal": "derived:jump_or_jalr",
+      "label": "jump || is_jalr",
+      "points": [
+        [
+          534,
+          684
+        ],
+        [
+          534,
+          838
+        ],
+        [
+          994.5,
+          838
+        ],
+        [
+          994.5,
+          800
+        ]
+      ]
+    },
+    {
+      "id": "w_m1_m6",
+      "from": "pcmux1.m1_out",
+      "to": "pcmux6.m6_0",
+      "kind": "data",
+      "signal": "derived:pc_next",
+      "points": [
+        [
+          212,
+          196
+        ],
+        [
+          160,
+          196
+        ]
+      ]
+    },
+    {
+      "id": "w_m6_m5",
+      "from": "pcmux6.m6_out",
+      "to": "pcmux5.m5_0",
+      "kind": "data",
+      "signal": "derived:pc_next",
+      "label": "",
+      "points": [
+        [
+          130,
+          196
+        ],
+        [
+          76,
+          196
+        ]
+      ]
+    },
+    {
+      "id": "w_m5_pc",
+      "from": "pcmux5.m5_out",
+      "to": "PC.pc_next",
+      "kind": "data",
+      "signal": "state.next_pc",
+      "label": "pc_next",
+      "points": [
+        [
+          46,
+          196
+        ],
+        [
+          20,
+          196
+        ],
+        [
+          20,
+          482
+        ],
+        [
+          106,
+          482
+        ]
+      ]
+    },
+    {
+      "id": "w_wb1_wb",
+      "from": "wbmux1.wb1_out",
+      "to": "wbmux.wb_0",
+      "kind": "data",
+      "signal": "derived:csr_old",
+      "label": "",
+      "points": [
+        [
+          1060,
+          741
+        ],
+        [
+          1009,
+          741
+        ]
+      ]
+    },
+    {
+      "id": "w_csr_irq",
+      "from": "csr.irq_out",
+      "to": "trapunit.irq_in",
+      "kind": "control",
+      "signal": "derived:csr_irq",
+      "label": "",
+      "points": [
+        [
+          290,
+          882
+        ],
+        [
+          290,
+          925
+        ],
+        [
+          200,
+          925
+        ],
+        [
+          200,
+          830
+        ],
+        [
+          186,
+          830
+        ]
+      ]
+    }
+  ],
+  "_signals": "三个 PC-MUX 的 sel：pcmux3.sel=is_jalr, pcmux2.sel=jump|is_jalr, pcmux1.sel=branch|jump|is_jalr（后端 rv_core.cpp 的 PC 目标 if/else 链）。跨大半张图的同名信号（pc / pc+4）改用端口网络标签 net，不画长线。",
+  "_signal_rules": "连线 signal 字段的取值口径：① 写成 state.xxx（对应后端 cycle_state 的字段路径）的，直接取后端值；② 写成 derived:xxx 的，后端没这个字段，前端从已有字段精确推导——pc_plus_4 = pc + 4；pc_imm = 分支/JAL 目标；pc_next = 本条指令最终写入 PC 的值；pcsel = branch||jump||is_jalr；jump_or_jalr = jump||is_jalr；alu_result_clean = alu.result & ~1（JALR）；csr_old = writeback.data 且 writeback.source=='CSR'；csr_irq = mtime>=mtimecmp 且 mie bit7(MTIE) 且 mstatus bit3(MIE)。③ signal 为 null 的表示这条线上是常量或全局时钟（clk/reset），不随后端状态变。注意图上的网络标签名 (net) 里 is_csr / is_mret / illegal / ecall / ebreak / csr_we / csr_addr 也都不在 control_signals_t 里（那个结构体只有 11 个字段），高亮时同样按推导口径处理：is_csr = writeback.source=='CSR'（rv_core.cpp:414）；ecall/ebreak/illegal = trap.taken 且 trap.cause 分别为 11/3/2（rv_core.cpp:381/385/273）；is_mret = instruction 整字 == 0x30200073（对齐 rv_disasm.cpp:192-197 的 funct3==0 && rd==0 && rs1==0 && inst>>20==0x302 四条判据，合起来就是整字相等。别用 0xFE007FFF 掩码，它清掉了 rs2 那几位，而 mret 的 rs2 恒为 2，会恒假）；csr_addr = instruction[31:20]；csr_we 镜像 rv_core.cpp:400-412 的 do_write 判据。",
+  "_wire_rules": "连线三条规则：① 每条线在末端（端口处）必须有箭头，方向 = 该线最后一段的走向；② 2 选 1 MUX 的两个数据输入 0/1 必须在同一条边上（输出边的对边），选择端只能占顶边或底边，且必须落在该边正中、与胶囊中心对称轴重合；③ 线色由信号性质决定：data=蓝实线（传输数值），control=灰虚线（判据/开关量：译码器输出、选择端、写使能、分支判据），clock=紫实线（clk / reset）。",
+  "_todo": "尚未做：把 buildDatapathScene() 接进 Vue（components/datapath/DatapathView.vue），按 state 高亮激活的线与部件、并在线上浮当前值。signal 字段已补齐，是那一步的输入。"
+}
