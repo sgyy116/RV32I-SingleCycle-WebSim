@@ -133,13 +133,13 @@ export const ARROW_W = 6.5
 /** 字号表（渲染后的最终像素值） */
 const FS = {
   module: 20,   // 矩形部件名
-  sub: 13,      // 矩形部件副标题（按长度降档 11/12/13）
+  sub: 16,      // 矩形部件副标题（主标题的 0.8 倍）
   textMod: 20,  // 纯文字标签（reset / clock / 常量）
   circle: 15,   // 圆圈部件
   aluChar: 18,  // ALU / 加法器的竖排字母
   aluSub: 12,   // ALU 右侧竖排的 F / ZF 等
-  port: 12,     // 端口名
-  wire: 15,     // 线名
+  port: 16,     // 端口名
+  wire: 16,     // 线名
 }
 
 /** 交叉作图标准 */

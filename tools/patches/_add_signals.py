@@ -43,7 +43,7 @@ SIG = {
     'w_sel_m1':         'derived:pcsel',           # branch || jump || is_jalr
     'w_sel_m2':         'derived:jump_or_jalr',    # jump || is_jalr
     'w_sel_m3':         'state.control_signals.is_jalr',
-    'w_dec_beq':        'state.control_signals.branch',
+    'w_dec_branch':     'state.control_signals.branch',
     'w_alu_zf':         'state.alu.zero',
     'w_m2_m1':          'derived:pc_next',
     'w_m3_m2':          'derived:pc_next',

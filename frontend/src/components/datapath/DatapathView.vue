@@ -15,6 +15,7 @@
 // ============================================================================
 
 import { computed, reactive, ref } from 'vue'
+import { NSlider } from 'naive-ui'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
 import { buildDatapathScene, type DatapathLayout, type SceneMeta } from '@/data/datapathScene'
@@ -39,6 +40,9 @@ const hasState = computed(() => Boolean(st.value))
 
 const svgEl = ref<SVGSVGElement | null>(null)
 const view = reactive({ x: 0, y: 0, w: scene.width, h: scene.height })
+const ZOOM_MIN = 0.6
+const ZOOM_MAX = 1.6
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
 function resetView() {
   view.x = 0
@@ -46,6 +50,8 @@ function resetView() {
   view.w = scene.width
   view.h = scene.height
 }
+
+const zoom = computed(() => clamp(scene.width / view.w, ZOOM_MIN, ZOOM_MAX))
 
 /** 当前 viewBox 映射到屏幕的缩放比与留白（preserveAspectRatio="xMidYMid meet"） */
 function mapping() {
@@ -67,18 +73,22 @@ function toSvg(clientX: number, clientY: number) {
   }
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+function setZoom(value: number | [number, number], anchor?: { x: number; y: number }) {
+  const target = Array.isArray(value) ? value[0] : value
+  const nw = scene.width / clamp(target, ZOOM_MIN, ZOOM_MAX)
+  const p = anchor ?? { x: view.x + view.w / 2, y: view.y + view.h / 2 }
+  const k = nw / view.w
+  view.x = p.x - (p.x - view.x) * k
+  view.y = p.y - (p.y - view.y) * k
+  view.w = nw
+  view.h = scene.height * (nw / scene.width)
+}
 
 function onWheel(ev: WheelEvent) {
   const p = toSvg(ev.clientX, ev.clientY)
   if (!p) return
-  const want = ev.deltaY < 0 ? view.w / 1.12 : view.w * 1.12
-  const nw = clamp(want, scene.width / 6, scene.width * 1.6)
-  const k = nw / view.w                       // 实际生效的缩放比（可能被 clamp 削过）
-  view.x = p.x - (p.x - view.x) * k
-  view.y = p.y - (p.y - view.y) * k
-  view.w = nw
-  view.h = scene.height * (nw / scene.width)  // 锁画布宽高比，不产生形变
+  const factor = 1.09 // 原缩放步长的 3/4，滚轮缩放更细
+  setZoom(ev.deltaY < 0 ? zoom.value * factor : zoom.value / factor, p)
 }
 
 let drag: { cx: number; cy: number; vx: number; vy: number } | null = null
@@ -210,7 +220,18 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 
     <!-- 缩放控制 -->
     <div class="zoom-bar">
-      <button type="button" @click="resetView">整图</button>
+      <span class="zoom-label">缩放</span>
+      <n-slider
+        class="zoom-slider"
+        :value="zoom"
+        :min="ZOOM_MIN"
+        :max="ZOOM_MAX"
+        :step="0.05"
+        :tooltip="false"
+        @update:value="setZoom"
+      />
+      <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
+      <button type="button" @click="resetView">1:1</button>
       <span class="hint">滚轮缩放 · 拖动平移 · 悬停看说明</span>
     </div>
 
@@ -280,7 +301,9 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 .wave-tag { font-family: Consolas, monospace; color: #93c5fd; }
 .wave-tag em { font-style: normal; color: #4ade80; }
 
-.zoom-bar { position: absolute; z-index: 3; left: 12px; top: 10px; display: flex; gap: 8px; align-items: center; }
+.zoom-bar { position: absolute; z-index: 3; left: 12px; top: 10px; display: flex; gap: 8px; align-items: center; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgba(255,255,255,.94); }
+.zoom-label, .zoom-value { color: #475569; font-size: 12px; font-weight: 700; }
+.zoom-slider { width: 140px; }
 .zoom-bar button { padding: 5px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; font-size: 12px; cursor: pointer; }
 .zoom-bar button:hover { border-color: #2563eb; color: #2563eb; }
 .zoom-bar .hint { color: #94a3b8; font-size: 11px; }

@@ -55,7 +55,11 @@ import WaveformPanel from '@/components/panels/WaveformPanel.vue'
   height: 100%;
 }
 :deep(.n-tabs-nav) {
-  padding: 0 8px;
+  padding: 0 28px;
+}
+:deep(.n-tabs-tab) {
+  font-weight: 700;
+  padding: 14px 10px;
 }
 :deep(.n-tab-pane) {
   padding: 0;

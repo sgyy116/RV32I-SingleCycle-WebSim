@@ -171,7 +171,7 @@ export const WIRE_SIGNAL: Record<string, WireSignal> = {
   'w_sel_m1': { active: pcSel },
   'w_sel_m2': { active: jumpOrJalr },
   'w_sel_m3': { active: (s) => s.control_signals.is_jalr },
-  'w_dec_beq': { active: (s) => s.control_signals.branch },
+  'w_dec_branch': { active: (s) => s.control_signals.branch },
   'w_alu_zf': { active: () => true, value: (s) => (s.alu.zero ? 'ZF=1' : 'ZF=0') },
   // pcmux2 → pcmux1：这条线传的是「选中的 PC 目标」，只有真发生了跳转才有值。
   // 注意 jumpOrJalr 是个函数，必须调用——写成 `jumpOrJalr || ...` 是拿函数对象

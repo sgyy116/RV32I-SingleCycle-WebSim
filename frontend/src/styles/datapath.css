@@ -18,9 +18,9 @@
 /* ---- 通电的连线 ----
    这些类直接落在 path 元素上，CSS 的 stroke-width 能压过元素自己的呈现属性。 */
 .dp-svg .dp-lit {
-  stroke-width: 4.5;
-  stroke-dasharray: none;
-  filter: drop-shadow(0 0 3px rgba(37, 99, 235, 0.5));
+  stroke-width: 2.5;
+  stroke-dasharray: 16 10;
+  animation: dp-flow 0.6s linear infinite;
 }
 
 /* ---- 本波新生的连线：流动虚线 ----
@@ -51,12 +51,10 @@
    而 SVG 是按 XML 解析的，所以全文（含注释）不许出现半角左尖括号和半角与号。 */
 .dp-svg g.module.dp-lit > *:first-child {
   stroke: #2563eb;
-  stroke-width: 4.5;
-  filter: drop-shadow(0 0 7px rgba(37, 99, 235, 0.45));
+  stroke-width: 2.5;
 }
 .dp-svg g.module.dp-trap-lit > *:first-child {
   stroke: #dc2626;
-  filter: drop-shadow(0 0 7px rgba(220, 38, 38, 0.6));
 }
 
 /* ---- 通电的网络标签：方框与文字一起由虚线变实线 ---- */

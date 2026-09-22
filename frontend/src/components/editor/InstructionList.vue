@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useSimulatorStore } from '@/stores/simulator'
 
 const sim = useSimulatorStore()
+const listEl = ref<HTMLElement | null>(null)
+const scrollTop = ref(0)
+const scrollMax = ref(0)
 
 // 当前执行到的 PC（高亮）
 const currentPc = computed(() => sim.cycleState?.pc ?? null)
@@ -15,6 +18,28 @@ function isBreakpoint(pc: string): boolean {
 function toggleBp(pc: string) {
   sim.toggleBreakpoint(pc)
 }
+
+function updateScroll() {
+  const el = listEl.value
+  if (!el) return
+  scrollTop.value = el.scrollTop
+  scrollMax.value = Math.max(0, el.scrollHeight - el.clientHeight)
+}
+
+function onSlider(event: Event) {
+  const value = Number((event.target as HTMLInputElement).value)
+  scrollTop.value = value
+  if (listEl.value) listEl.value.scrollTop = value
+}
+
+function onWheel(event: WheelEvent) {
+  if (!listEl.value || !scrollMax.value) return
+  event.preventDefault()
+  listEl.value.scrollTop = Math.max(0, Math.min(scrollMax.value, listEl.value.scrollTop + event.deltaY))
+}
+
+onMounted(() => nextTick(updateScroll))
+watch(() => sim.disassembly.length, () => nextTick(updateScroll))
 </script>
 
 <template>
@@ -23,7 +48,7 @@ function toggleBp(pc: string) {
       <span>指令列表（反汇编）</span>
       <span class="text-slate-400 font-normal">{{ sim.disassembly.length }} 条</span>
     </div>
-    <div class="flex-1 overflow-y-auto">
+    <div ref="listEl" class="flex-1 overflow-y-auto" @scroll="updateScroll" @wheel="onWheel">
       <table class="w-full text-xs font-mono">
         <tbody>
           <tr
@@ -46,6 +71,18 @@ function toggleBp(pc: string) {
           </tr>
         </tbody>
       </table>
+    </div>
+    <div class="px-3 py-2 border-t border-slate-200 bg-slate-50">
+      <input
+        class="w-full accent-blue-600"
+        type="range"
+        min="0"
+        :max="scrollMax"
+        :value="scrollTop"
+        :disabled="scrollMax === 0"
+        aria-label="指令列表滚动位置"
+        @input="onSlider"
+      />
     </div>
   </div>
 </template>

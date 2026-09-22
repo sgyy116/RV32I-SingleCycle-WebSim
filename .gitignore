@@ -3,6 +3,7 @@ frontend/dist/
 frontend/.vite/
 backend/cpp/build/
 backend/python/__pycache__/
+backend/test/*.bin
 tools/out/
 *.pyc
 *.tsbuildinfo

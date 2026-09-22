@@ -5,7 +5,7 @@ const sim = useSimulatorStore()
 </script>
 
 <template>
-  <footer class="h-8 shrink-0 flex items-center gap-4 px-4 text-[11px] bg-slate-900 text-slate-300 border-t border-slate-700">
+  <footer class="h-10 shrink-0 flex items-center gap-4 px-4 text-sm bg-slate-900 text-slate-300 border-t border-slate-700">
     <div class="flex items-center gap-1.5">
       <span class="w-2 h-2 rounded-full" :class="sim.connected ? 'bg-green-500' : 'bg-red-500'"></span>
       <span>{{ sim.connected ? '后端已连接' : '后端未连接' }}</span>

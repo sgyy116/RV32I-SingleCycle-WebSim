@@ -27,7 +27,7 @@ const EXPECT = [
   { dis: 'addi', wire: ['w_ctl_alusrc', 'w_dec_wen', 'w_wb_rf'], net: [] },
   { dis: 'sw',   wire: ['w_ctl_sw', 'w_rf_dmem', 'w_alu_dmem'], net: [] },
   { dis: 'lw',   wire: ['w_dmem_wb0', 'w_ctl_memtoreg', 'w_alu_dmem'], net: [] },
-  { dis: 'beq',  wire: ['w_dec_beq', 'w_taken_m4', 'w_immadd_m4'], net: [] },
+  { dis: 'beq',  wire: ['w_dec_branch', 'w_taken_m4', 'w_immadd_m4'], net: [] },
   { dis: 'jalr', wire: [], net: [] },
   { dis: 'jal',  wire: ['w_ctl_link', 'w_wb_rf', 'w_sel_m2', 'w_sel_m1'], net: [] },
   // csr_we 曾经漏在这一行外面，而它恰恰是当时唯一没亮的那个网络——

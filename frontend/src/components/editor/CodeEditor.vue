@@ -78,7 +78,10 @@ watch(
         v-model:value="editor.currentExample"
         class="flex-1"
         size="small"
-        :options="EXAMPLES.map((e, i) => ({ label: e.name, value: i }))"
+        :options="[
+          ...EXAMPLES.map((e, i) => ({ label: e.name, value: i })),
+          { label: '自定义', value: -1 },
+        ]"
         @update:value="editor.loadExample"
       />
       <n-button

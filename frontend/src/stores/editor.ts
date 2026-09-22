@@ -12,6 +12,11 @@ export const useEditorStore = defineStore('editor', () => {
   const autoCompile = ref(true)
 
   function loadExample(index: number) {
+    if (index === -1) {
+      currentExample.value = -1
+      code.value = ''
+      return
+    }
     const ex = EXAMPLES[index]
     if (!ex) return
     currentExample.value = index

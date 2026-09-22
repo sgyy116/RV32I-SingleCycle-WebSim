@@ -81,7 +81,8 @@ function numRow(label: string, color: string, nums: number[]): Row {
   const labels: LabelPt[] = []
   nums.forEach((v, i) => {
     if (i === 0 || v !== nums[i - 1]) {
-      labels.push({ x: i * COLW + COLW / 2, y: Math.max(ys[i] - 2, 9), text: v.toString(16) })
+      const labelY = ys[i] <= PAD + 1 ? Math.min(ys[i] + 12, RH - 2) : Math.max(ys[i] - 2, 10)
+      labels.push({ x: i * COLW + COLW / 2, y: labelY, text: v.toString(16) })
     }
   })
   return { label, kind: 'num', color, path: stepYPath(ys), labels }
@@ -119,7 +120,7 @@ watch(hist, async () => {
     <!-- 标题 + 选择按钮 -->
     <div class="flex items-center justify-between mb-1.5">
       <span class="text-[10px] font-semibold text-slate-400">波形（每列=一个周期）</span>
-      <button @click="showPicker = !showPicker" class="text-[9px] text-blue-600 hover:underline">
+      <button @click="showPicker = !showPicker" class="text-[10px] text-blue-600 hover:underline">
         选择信号 {{ showPicker ? '▴' : '▾' }}
       </button>
     </div>
@@ -127,49 +128,49 @@ watch(hist, async () => {
     <!-- 信号选择器 -->
     <div v-if="showPicker" class="border border-slate-200 rounded-lg bg-white p-2 mb-2 space-y-2">
       <div>
-        <div class="text-[9px] text-slate-400 mb-1">常用信号</div>
+        <div class="text-[10px] text-slate-400 mb-1">常用信号</div>
         <div class="flex flex-wrap gap-1">
           <button v-for="d in DEFS" :key="d.key" @click="toggle(d.key)"
-                  class="px-1.5 py-0.5 rounded text-[9px] border font-mono"
+                  class="px-1.5 py-0.5 rounded text-[10px] border font-mono"
                   :class="selected.has(d.key) ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-400'">
             {{ d.label }}
           </button>
         </div>
       </div>
       <div>
-        <div class="text-[9px] text-slate-400 mb-1">寄存器（点一下加入波形）</div>
+        <div class="text-[10px] text-slate-400 mb-1">寄存器（点一下加入波形）</div>
         <div class="flex flex-wrap gap-1">
           <button v-for="(nm, i) in REG_NAMES" :key="i" @click="toggle('reg:' + i)"
-                  class="px-1.5 py-0.5 rounded text-[9px] border font-mono"
+                  class="px-1.5 py-0.5 rounded text-[10px] border font-mono"
                   :class="selected.has('reg:' + i) ? 'bg-violet-100 border-violet-300 text-violet-700' : 'bg-white border-slate-200 text-slate-400'">
             x{{ i }}<span class="opacity-60">/{{ nm }}</span>
           </button>
         </div>
       </div>
-      <button @click="showPicker = false" class="w-full text-[9px] text-slate-400 text-right">收起</button>
+      <button @click="showPicker = false" class="w-full text-[10px] text-slate-400 text-right">收起</button>
     </div>
 
     <div v-if="hist.length" ref="scrollEl" class="overflow-x-auto border border-slate-200 rounded-lg bg-white">
       <div class="min-w-max">
         <!-- 表头：周期号 + 指令 -->
         <div class="flex">
-          <div class="sticky left-0 z-10 bg-slate-50 w-[60px] shrink-0 text-[9px] text-slate-400 px-1.5 py-1">周期</div>
-          <div v-for="(_, i) in instrs" :key="'c' + i" class="shrink-0 text-center text-[9px] text-slate-400 py-1 border-l border-slate-100"
+          <div class="sticky left-0 z-10 bg-slate-50 w-[60px] shrink-0 text-[10px] text-slate-400 px-1.5 py-1">周期</div>
+          <div v-for="(_, i) in instrs" :key="'c' + i" class="shrink-0 text-center text-[10px] text-slate-400 py-1 border-l border-slate-100"
                :style="{ width: COLW + 'px' }">{{ i }}</div>
         </div>
         <div class="flex">
-          <div class="sticky left-0 z-10 bg-slate-50 w-[60px] shrink-0 text-[9px] text-slate-500 font-medium px-1.5 py-1">指令</div>
-          <div v-for="(it, i) in instrs" :key="'i' + i" class="shrink-0 text-center text-[8px] font-mono text-slate-500 truncate py-1 border-l border-slate-100"
+          <div class="sticky left-0 z-10 bg-slate-50 w-[60px] shrink-0 text-[10px] text-slate-500 font-medium px-1.5 py-1">指令</div>
+          <div v-for="(it, i) in instrs" :key="'i' + i" class="shrink-0 text-center text-[9px] font-mono text-slate-500 truncate py-1 border-l border-slate-100"
                :style="{ width: COLW + 'px' }" :title="hist[i].disassembly">{{ it }}</div>
         </div>
 
         <!-- 每选中信号一行 SVG 波形 -->
         <div v-for="r in rows" :key="r.label" class="flex">
-          <div class="sticky left-0 z-10 bg-white w-[60px] shrink-0 text-[9px] text-slate-500 font-medium px-1.5 flex items-center border-t border-slate-100">{{ r.label }}</div>
+          <div class="sticky left-0 z-10 bg-white w-[60px] shrink-0 text-[10px] text-slate-500 font-medium px-1.5 flex items-center border-t border-slate-100">{{ r.label }}</div>
           <svg class="shrink-0 border-t border-slate-100" :width="svgW" :height="RH">
             <g v-if="r.kind === 'num' && r.labels">
               <text v-for="(p, i) in r.labels" :key="i" :x="p.x" :y="p.y" text-anchor="middle"
-                    :fill="r.color" font-size="7" font-family="monospace">{{ p.text }}</text>
+                    :fill="r.color" font-size="9" font-family="monospace">{{ p.text }}</text>
             </g>
             <path :d="r.path" fill="none" :stroke="r.color" stroke-width="1.6" stroke-linejoin="round" />
           </svg>

@@ -138,7 +138,7 @@
       "y": 20,
       "w": 98,
       "h": 54,
-      "tip": "分支成立判断。左端收 is_beq，右端收 alu_zf，输出向下进 pcmux4 的选择端"
+      "tip": "条件分支成立判断。左端收 branch 条件控制，右端收 ALU 比较结果，输出向下进 pcmux4 的选择端"
     },
     {
       "id": "decoder",
@@ -547,7 +547,7 @@
       "label": ""
     },
     {
-      "id": "taken.beq_in",
+      "id": "taken.branch_in",
       "module": "taken",
       "side": "left",
       "offset": 27,
@@ -810,7 +810,7 @@
       "label": ""
     },
     {
-      "id": "decoder.beq_out",
+      "id": "decoder.branch_out",
       "module": "decoder",
       "side": "top",
       "offset": 44,
@@ -1545,9 +1545,9 @@
       ]
     },
     {
-      "id": "w_dec_beq",
-      "from": "decoder.beq_out",
-      "to": "taken.beq_in",
+      "id": "w_dec_branch",
+      "from": "decoder.branch_out",
+      "to": "taken.branch_in",
       "kind": "control",
       "signal": "state.control_signals.branch",
       "label": "branch",

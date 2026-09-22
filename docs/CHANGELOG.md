@@ -6,6 +6,25 @@
 
 ---
 
+## v1.2.0（2026-09-23）
+
+### 做了什么
+
+- 按《具体说明.md》移植 1.1.1 的界面改动：杭州电子科技大学 Logo、白色加粗控制按钮、历史步进文字、编辑器“自定义”选项、指令列表滚动条与鼠标滚轮，以及数据通路缩放滑块。
+- 将数据通路中的 `taken` 从 BEQ 专用输入改为通用条件分支输入；`w_dec_branch` 与 `state.branch.taken` 覆盖 BEQ、BNE、BLT、BGE、BLTU、BGEU。
+- 调整数据通路高亮线型、字号、去阴影效果，并将波形数值标注移到高电平线下方，避免文字压线。
+- 在独立 Git 工作树 `release/v1.2.0` 中维护本正式版本，原 0922 目录保持不改。
+
+### 复验
+
+- `backend/test/test_sim.py`
+- `backend/test/test_branch_conditions.py`
+- `tools/test_branch_visual.mjs`
+- `tools/check_layout.py`
+- 前端生产构建
+
+---
+
 ## 2026-09-22（第二轮）数据通路「信号逐波传播」动画
 
 ### 为什么
