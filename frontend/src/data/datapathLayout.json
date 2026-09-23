@@ -132,13 +132,13 @@
     {
       "id": "taken",
       "label": "taken",
-      "shape": "circle",
+      "shape": "rect",
       "group": "EX",
       "x": 600.5,
-      "y": 20,
+      "y": 14,
       "w": 98,
-      "h": 54,
-      "tip": "条件分支成立判断。左端收 branch 条件控制，右端收 ALU 比较结果，输出向下进 pcmux4 的选择端"
+      "h": 60,
+      "tip": "分支成立判断。左端收 branch、funct3[2]（选「小于」还是「相等」）、funct3[0]（选极性）；右端收 alu_zf 与 alu_lt；输出向下进 pcmux4 的选择端（1 = 选 pc+imm）。taken = branch AND ( funct3[0] ? NOT base : base )，base = funct3[2] ? lt : zf"
     },
     {
       "id": "decoder",
@@ -177,14 +177,14 @@
     {
       "id": "alu",
       "label": "ALU",
-      "sub": "ZF OF F",
+      "sub": "ZF LT F",
       "shape": "alu",
       "group": "EX",
       "x": 1062,
       "y": 388,
       "w": 110,
       "h": 294,
-      "tip": "主 ALU。两个输入在左（a / b），右侧出 F 与 ZF。输出 F 同时去数据存储器、写回 MUX 和 &~1"
+      "tip": "主 ALU。两个输入在左（a / b），右侧出三个标志：F（结果）、ZF（结果为 0）、LT（结果最低位，即 SLT/SLTU 的比较结果）。F 同时去数据存储器、写回 MUX 和 &~1；ZF 与 LT 都送进 taken 单元做分支判断"
     },
     {
       "id": "muxa",
@@ -550,15 +550,36 @@
       "id": "taken.branch_in",
       "module": "taken",
       "side": "left",
-      "offset": 27,
-      "label": ""
+      "offset": 11,
+      "label": "branch"
+    },
+    {
+      "id": "taken.f3sel_in",
+      "module": "taken",
+      "side": "left",
+      "offset": 30,
+      "label": "f3[2]"
+    },
+    {
+      "id": "taken.pol_in",
+      "module": "taken",
+      "side": "left",
+      "offset": 49,
+      "label": "f3[0]"
     },
     {
       "id": "taken.zf_in",
       "module": "taken",
       "side": "right",
-      "offset": 27,
-      "label": ""
+      "offset": 19,
+      "label": "ZF"
+    },
+    {
+      "id": "taken.lt_in",
+      "module": "taken",
+      "side": "right",
+      "offset": 41,
+      "label": "LT"
     },
     {
       "id": "taken.out",
@@ -667,6 +688,13 @@
       "side": "right",
       "offset": 94,
       "label": "ZF"
+    },
+    {
+      "id": "alu.lt_out",
+      "module": "alu",
+      "side": "right",
+      "offset": 116,
+      "label": "LT"
     },
     {
       "id": "muxa.ma_1",
@@ -810,10 +838,24 @@
       "label": ""
     },
     {
+      "id": "decoder.f3sel_out",
+      "module": "decoder",
+      "side": "top",
+      "offset": 6,
+      "label": "f3[2]"
+    },
+    {
+      "id": "decoder.pol_out",
+      "module": "decoder",
+      "side": "top",
+      "offset": 18,
+      "label": "f3[0]"
+    },
+    {
       "id": "decoder.branch_out",
       "module": "decoder",
       "side": "top",
-      "offset": 44,
+      "offset": 30,
       "label": ""
     },
     {
@@ -974,7 +1016,7 @@
       "id": "decoder.jumpjalr_out",
       "module": "decoder",
       "side": "top",
-      "offset": 24
+      "offset": 46
     },
     {
       "id": "pcmux6.m6_0",
@@ -1505,11 +1547,11 @@
       "label": "jump || is_jalr",
       "points": [
         [
-          548,
+          570,
           220
         ],
         [
-          548,
+          570,
           120
         ],
         [
@@ -1553,16 +1595,60 @@
       "label": "branch",
       "points": [
         [
-          568,
+          554,
           220
         ],
         [
-          568,
-          47
+          554,
+          25
         ],
         [
           600.5,
-          47
+          25
+        ]
+      ]
+    },
+    {
+      "id": "w_dec_f3sel",
+      "from": "decoder.f3sel_out",
+      "to": "taken.f3sel_in",
+      "kind": "control",
+      "signal": "state.instruction_fields.funct3[2]",
+      "label": "f3[2]",
+      "points": [
+        [
+          530,
+          220
+        ],
+        [
+          530,
+          44
+        ],
+        [
+          600.5,
+          44
+        ]
+      ]
+    },
+    {
+      "id": "w_dec_pol",
+      "from": "decoder.pol_out",
+      "to": "taken.pol_in",
+      "kind": "control",
+      "signal": "state.instruction_fields.funct3[0]",
+      "label": "f3[0]",
+      "points": [
+        [
+          542,
+          220
+        ],
+        [
+          542,
+          63
+        ],
+        [
+          600.5,
+          63
         ]
       ]
     },
@@ -1584,11 +1670,37 @@
         ],
         [
           1200,
-          47
+          33
         ],
         [
           698.5,
-          47
+          33
+        ]
+      ]
+    },
+    {
+      "id": "w_alu_lt",
+      "from": "alu.lt_out",
+      "to": "taken.lt_in",
+      "kind": "control",
+      "signal": "state.alu.less",
+      "label": "alu_lt",
+      "points": [
+        [
+          1172,
+          504
+        ],
+        [
+          1224,
+          504
+        ],
+        [
+          1224,
+          55
+        ],
+        [
+          698.5,
+          55
         ]
       ]
     },

@@ -37,6 +37,8 @@ export interface AluInfo {
   op2: number
   result: number
   zero: boolean
+  /** result 的最低位。SLT/SLTU 的比较结果，送进 taken 单元的 LT 输入 */
+  less: boolean
 }
 
 export interface MemoryInfo {

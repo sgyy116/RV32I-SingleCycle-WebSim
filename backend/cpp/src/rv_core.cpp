@@ -87,7 +87,8 @@ std::string cycle_state_to_json(const cycle_state_t& s, bool as_message) {
     os << "\"op1\":"    << s.alu.op1 << ",";
     os << "\"op2\":"    << s.alu.op2 << ",";
     os << "\"result\":" << s.alu.result << ",";
-    os << "\"zero\":"   << (s.alu.zero ? "true" : "false");
+    os << "\"zero\":"   << (s.alu.zero ? "true" : "false") << ",";
+    os << "\"less\":"   << (s.alu.less ? "true" : "false");
     os << "},";
 
     os << "\"memory\":{";
@@ -293,6 +294,7 @@ bool rv32i_core::step(cycle_state_t& out) {
     auto ar = alu_compute(out.ctrl.alu_op, op1, alu_in2);
     out.alu.result = ar.value;
     out.alu.zero = ar.zero;
+    out.alu.less = ar.less;
 
     // ---------------- 分支 / 跳转目标 ----------------
     u32 target = m_pc + 4;
@@ -300,16 +302,21 @@ bool rv32i_core::step(cycle_state_t& out) {
 
     if (out.ctrl.branch) {
         target = m_pc + static_cast<u32>(d.imm);
-        switch (d.kind) {
-            case InstrKind::BEQ:  taken = rs1_val == rs2_val; break;
-            case InstrKind::BNE:  taken = rs1_val != rs2_val; break;
-            case InstrKind::BLT:  taken = static_cast<i32>(rs1_val) < static_cast<i32>(rs2_val); break;
-            case InstrKind::BGE:  taken = static_cast<i32>(rs1_val) >= static_cast<i32>(rs2_val); break;
-            case InstrKind::BLTU: taken = rs1_val < rs2_val; break;
-            case InstrKind::BGEU: taken = rs1_val >= rs2_val; break;
-            default: break;
+        // taken 由 ALU 交出的两个标志位 + funct3 组出来，与图上 taken 单元的接线一一对应：
+        //   base  = funct3[2] ? less : zero     funct3[2] 在「小于」与「相等」之间选一路
+        //   taken = funct3[0] ? !base : base    funct3[0] 选极性，把 blt/bge、bltu/bgeu 分成一对
+        // 逐条核对：
+        //   000 beq →base=zero  pol=0→zero        001 bne  →base=zero  pol=1→!zero
+        //   100 blt →base=less  pol=0→less        101 bge  →base=less  pol=1→!less
+        //   110 bltu→base=less  pol=0→less        111 bgeu →base=less  pol=1→!less
+        // 有符号/无符号的差别不在 taken 里，而在 alu_op（SLT / SLTU，见 rv_control.hpp）。
+        // 原先这里是一张 switch(d.kind) 表：功能上对，但和图上那个只有 branch/zf 两个
+        // 输入的 circle 完全对不上 —— 图上学不到 blt/bge 是怎么判的，属于「图错」。
+        {
+            const bool base = (d.funct3 & 0b100) ? ar.less : ar.zero;
+            taken = (d.funct3 & 0b001) ? !base : base;
         }
-        // 修复 bug：分支条件不满足时不得跳转，应顺序执行下一条（否则循环无法退出）
+        // 分支条件不满足时不得跳转，应顺序执行下一条（否则循环无法退出）
         if (!taken) target = m_pc + 4;
         out.branch.taken = taken;
         out.branch.target_addr = target;
@@ -414,6 +421,10 @@ bool rv32i_core::step(cycle_state_t& out) {
             }
             if (do_write) csr_write(csr_addr, wv);
             out.wb.source = "CSR";
+            // CSR 指令同样经寄存器写回（rd 拿到旧值）。主译码对 OP_SYSTEM 一律保持
+            // 全 0（rv_control.hpp 的 case OP_SYSTEM），所以这里必须自己补上 reg_write
+            // —— 否则图上「寄存器写使能」与写地址线灭着，而寄存器其实真的被改了。
+            out.ctrl.reg_write = (d.rd != 0);
             out.wb.active = d.rd != 0;
             out.wb.reg_index = d.rd;
             out.wb.data = old;

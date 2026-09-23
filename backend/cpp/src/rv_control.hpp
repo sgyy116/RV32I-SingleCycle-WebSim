@@ -10,7 +10,7 @@
 //   mem_to_reg : 写回数据来源：0=ALU结果, 1=内存数据
 //   branch     : 条件分支指令
 //   jump       : 无条件跳转（JAL）
-//   is_auipc   : AUIPC（写回 pc+imm，ALU 用 PASS_A 直接透传）
+//   is_auipc   : AUIPC（写回 pc+imm；op1 取 PC、op2 取立即数，故 ALU 做 ADD）
 //   is_lui     : LUI（ALU 用 PASS_A 直接透传立即数）
 //   is_jalr    : JALR（PC = ALU结果 & ~1）
 //   alu_op     : ALU 操作码
@@ -48,7 +48,10 @@ inline control_signals_t control_decode(u32 opcode, u32 funct3, u32 funct7) {
             c.reg_write = true;
             c.is_auipc  = true;
             c.alu_src   = true;
-            c.alu_op    = AluOp::PASS_A;
+            // AUIPC 要写回 pc + (imm<<12)：core 里 op1 被设为 m_pc、op2 取立即数，
+            // 所以这里必须做 ADD。原先写成 PASS_A 只透传 op1，把立即数整个丢掉，
+            // 结果退化成 pc —— 只有 auipc x, 0（imm=0）时看不出差别。
+            c.alu_op    = AluOp::ADD;
             break;
         case OP_JAL:
             c.reg_write = true;
@@ -64,7 +67,14 @@ inline control_signals_t control_decode(u32 opcode, u32 funct3, u32 funct7) {
             break;
         case OP_BRANCH:
             c.branch = true;
-            c.alu_op = AluOp::SUB;   // 分支比较 = rs1 - rs2
+            // 分支的 ALU 操作按 funct3 选，而不是一律 SUB：
+            //   funct3[2]=0        （beq/bne）→ SUB，taken 看 ZF
+            //   funct3[2]=1,f3[1]=0（blt/bge）→ SLT  有符号比较
+            //   funct3[2]=1,f3[1]=1（bltu/bgeu）→ SLTU 无符号比较
+            // 有符号/无符号的区别就落在 alu_op 里，所以 taken 单元只需要
+            // 一个「小于」标志位（见 rv_core.cpp 的 taken 推导与图上 alu.lt_out）。
+            if (funct3 & 0b100) c.alu_op = (funct3 & 0b010) ? AluOp::SLTU : AluOp::SLT;
+            else                c.alu_op = AluOp::SUB;
             break;
         case OP_LOAD:
             c.reg_write = true;

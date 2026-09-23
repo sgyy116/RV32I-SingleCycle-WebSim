@@ -22,7 +22,7 @@ namespace rv32i {
 
 // ---- 单周期数据通路状态（对应实现方案 6.3 节 JSON 协议） ----
 struct reg_read_info_t { u32 index = 0; u32 value = 0; };
-struct alu_info_t      { u32 op1 = 0, op2 = 0, result = 0; bool zero = false; };
+struct alu_info_t      { u32 op1 = 0, op2 = 0, result = 0; bool zero = false; bool less = false; };
 struct mem_info_t      { u32 addr = 0, read_data = 0, write_data = 0;
                          std::string access_type = "NONE"; u32 access_size = 0; };
 struct wb_info_t       { bool active = false; u32 reg_index = 0; u32 data = 0;

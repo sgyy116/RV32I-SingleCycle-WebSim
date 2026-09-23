@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-_add_signals.py —— 给 datapathLayout.json 的 57 条连线补 signal 字段。
+_add_signals.py —— 给 datapathLayout.json 的连线补 signal 字段。
+
+【历史脚本，已执行过，不要再跑】这是「signal 字段是这么补上的」的存档记录：
+它按 SIG 表整表重写 wires 的键序和 signal 值。当前 JSON 的 signal 字段与此表
+一致（含后来新增的 w_dec_branch / w_dec_f3sel / w_dec_pol / w_alu_lt），
+但真正生效的读取方是 frontend/src/data/datapathHighlight.ts 的 WIRE_SIGNAL。
+若以后加线，改 WIRE_SIGNAL 与 JSON 即可，不必回来跑这个脚本。
 
 signal 是纯元数据：标明这条线上跑的是后端 cycle_state 的哪个字段，供前端
 高亮取值。几何自检和 preview.mjs 都不读它。
@@ -44,7 +50,11 @@ SIG = {
     'w_sel_m2':         'derived:jump_or_jalr',    # jump || is_jalr
     'w_sel_m3':         'state.control_signals.is_jalr',
     'w_dec_branch':     'state.control_signals.branch',
+    # funct3 的两位直接决定 taken 取 ZF 还是 LT、要不要取反（见 rv_control.hpp 的 OP_BRANCH）
+    'w_dec_f3sel':      'state.instruction_fields.funct3[2]',
+    'w_dec_pol':        'state.instruction_fields.funct3[0]',
     'w_alu_zf':         'state.alu.zero',
+    'w_alu_lt':         'state.alu.less',
     'w_m2_m1':          'derived:pc_next',
     'w_m3_m2':          'derived:pc_next',
     'w_m4_m2':          'derived:pc_next',

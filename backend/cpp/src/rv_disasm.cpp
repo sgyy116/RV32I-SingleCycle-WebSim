@@ -76,6 +76,10 @@ decoded_instr_t decode(u32 bits) {
         case OP_JALR:
             d.kind = InstrKind::JALR; d.format = Format::I;
             d.imm = imm_gen(in, Format::I);
+            // 规范对 JALR 只定义 funct3=000，其余取值是保留编码 ⇒ 非法指令。
+            // （差分测试实测：修之前 funct3=1..7 被当合法 JALR 执行，学生拿到的是
+            //  一条「能跑但规范没定义」的指令，而不是非法指令异常。）
+            if (d.funct3 != 0b000) { d.kind = InstrKind::INVALID; d.mnemonic = "invalid"; break; }
             d.mnemonic = "jalr";
             { std::ostringstream os; os << "jalr " << reg_name(d.rd) << ", " << d.imm
                 << "(" << reg_name(d.rs1) << ")";
@@ -143,10 +147,19 @@ decoded_instr_t decode(u32 bits) {
                 case 0b110: d.kind = InstrKind::ORI;   d.mnemonic = "ori";   break;
                 case 0b111: d.kind = InstrKind::ANDI;  d.mnemonic = "andi";  break;
                 case 0b001:
+                    // 移位是「shamtw 型」：RV32 只有 5 位 shamt，bits[31:25] 必须为 0。
+                    // 原先完全不看 funct7，保留编码也被当成了合法 slli。
+                    // 注意只有移位这两例要看 funct7 —— 上面 addi/slti/... 的 funct7
+                    // 其实就是立即数的高 7 位，取值自由，不能一起卡死。
+                    if (d.funct7 != 0x00) { d.kind = InstrKind::INVALID; break; }
                     d.kind = InstrKind::SLLI; d.mnemonic = "slli";
                     d.imm = static_cast<i32>(d.rs2 & 31);
                     break;
                 case 0b101:
+                    // srli / srai 靠 funct7 区分（0x00 / 0x20），其余取值一律非法
+                    if (d.funct7 != 0x00 && d.funct7 != 0x20) {
+                        d.kind = InstrKind::INVALID; break;
+                    }
                     if (d.funct7 == 0x20) { d.kind = InstrKind::SRAI; d.mnemonic = "srai"; }
                     else                  { d.kind = InstrKind::SRLI; d.mnemonic = "srli"; }
                     d.imm = static_cast<i32>(d.rs2 & 31);
@@ -161,6 +174,16 @@ decoded_instr_t decode(u32 bits) {
 
         case OP_OP: {
             d.format = Format::R;
+            // RV32I 的 R 型只有两种合法 funct7：0x00（十条里的八条）与 0x20（仅 sub/sra）。
+            // 原实现除 sub/sra 外完全不看 funct7 —— RV32M 的 mul/div/rem（funct7=0x01）
+            // 会被**静默当成 add/sll/slt/... 执行**：不报错，只是算出一个错值。
+            // 「不报错的错值」比报错难查得多。这里按 RV32I 收口，不合法的编码交给
+            // rv_core 统一按非法指令处理（mcause=2，mtval=机器码）。
+            if (d.funct7 != 0x00 &&
+                !(d.funct7 == 0x20 && (d.funct3 == 0b000 || d.funct3 == 0b101))) {
+                d.kind = InstrKind::INVALID;
+                break;
+            }
             switch (d.funct3) {
                 case 0b000: d.kind = (d.funct7 == 0x20) ? InstrKind::SUB : InstrKind::ADD;
                             d.mnemonic = (d.funct7 == 0x20) ? "sub" : "add"; break;
@@ -181,7 +204,11 @@ decoded_instr_t decode(u32 bits) {
         }
 
         case OP_MISC_MEM:
-            d.kind = InstrKind::FENCE; d.format = Format::I;
+            d.format = Format::I;
+            // 规范只定义 funct3=000(FENCE) 与 001(FENCE.I)，其余是保留编码 ⇒ 非法指令。
+            // FENCE.I 在本核心上是空操作，与 FENCE 同处理即可（不必单列一种 kind）。
+            if (d.funct3 > 0b001) { d.kind = InstrKind::INVALID; d.mnemonic = "invalid"; break; }
+            d.kind = InstrKind::FENCE;
             d.mnemonic = "fence"; d.text = "fence";
             break;
 
@@ -254,9 +281,14 @@ decoded_instr_t decode(u32 bits) {
             break;
     }
 
-    if (d.kind == InstrKind::INVALID && d.mnemonic.empty()) {
+    // 非法编码的展示文本一律统一成 `.word 0x…`。
+    // OP_BRANCH / OP_LOAD / OP_STORE / OP_OP_IMM / OP_OP 五个 default 只置了 kind
+    // 没置 mnemonic，而紧随其后的 ostringstream 块是**无条件执行**的，于是 text 会
+    // 变成 `" a0, a1, 8"` —— 一条没有指令名的操作数列表。原先这里用 text.empty()
+    // 判断是否覆盖，正好被这个「非空的垃圾文本」绕过，学生看到的就是那串残片。
+    if (d.kind == InstrKind::INVALID) {
         d.mnemonic = "invalid";
-        if (d.text.empty()) d.text = ".word " + fmt_hex(bits);
+        d.text = ".word " + fmt_hex(bits);
     }
     return d;
 }

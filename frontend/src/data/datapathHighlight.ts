@@ -46,6 +46,16 @@ function bin(v: string | undefined): number {
 /** 图上的紧凑十六进制（不补零，短线上放得下） */
 export const hex = (n: number): string => '0x' + (n >>> 0).toString(16).toUpperCase()
 
+/**
+ * 当前指令 funct3 的第 n 位（n=0 是最低位）。分支的 taken 逻辑全靠其中两位：
+ *   funct3[2] 在「小于(LT)」与「相等(ZF)」之间选一路；
+ *   funct3[0] 选极性（blt/bge、bltu/bgeu 各是一对正反）。
+ * funct3[1] 不参与 taken —— 它只决定后端选 SLT 还是 SLTU（有符号/无符号），
+ * 那个差别落在 alu_op 里，所以在图上没有对应的线（见 rv_control.hpp 的 OP_BRANCH）。
+ */
+const f3bit = (s: CycleState, n: number): boolean =>
+  ((bin(s.instruction_fields?.funct3) >> n) & 1) !== 0
+
 // ---------------------------------------------------------------- 派生量
 // 全部镜像 backend/cpp/src/rv_core.cpp 的实现，行号见注释。
 
@@ -150,7 +160,7 @@ const ALWAYS: WireSignal = { active: () => true }
 const SUPPLY_MODULES = new Set(['clkmod', 'reset', 'const0', 'const4'])
 
 /**
- * 连线 id → 高亮规则。57 条全在这里。
+ * 连线 id → 高亮规则。60 条全在这里（datapathLayout.json 里的线逐条都要有）。
  * 没写进来的走「恒亮、不显值」的默认（见 DEFAULT_WIRE_SIGNAL）。
  */
 export const WIRE_SIGNAL: Record<string, WireSignal> = {
@@ -162,24 +172,56 @@ export const WIRE_SIGNAL: Record<string, WireSignal> = {
   'w_reset_pc': ALWAYS, 'w_reset_rf': ALWAYS,
 
   // ---- PC 目标选择链 ----
-  'w_add4_m1': { active: () => true, value: (s) => hex(u32(s.pc) + 4) },
-  'w_add4_m4': { active: () => true, value: (s) => hex(u32(s.pc) + 4) },
+  // 点亮契约见 docs/HL_CONTRACT.md：**每个 MUX 只把它本周期选中的那一路点亮，另一路灭**。
+  // 判据落在端口上——一根线汇入 X_0 / X_1，就由 X 自己的 sel 决定，与下游有没有被用到
+  // 无关。四个 PC-MUX 因此永远恰好亮一路，「互斥」可以直接写成断言
+  // （tools/_wave_check.mjs 的 MUX_DATA 表）。
+  // 这一段原先有 6 条判据是错的：w_immadd_m3 = is_jalr（正好接反，jal 时该亮却灭）、
+  // w_m3_m2 / w_m4_m2 都漏了 jal、w_m2_m1 漏了「不跳的分支 pcSel 仍为 1」、
+  // w_add4_m1 / w_add4_m4 恒亮。学生照着图看 jal/jalr 的 PC 是怎么来的会得到错误结论——
+  // 这属于「信号传递正确」，不是观感取舍。
+  'w_add4_m1': { active: (s) => !pcSel(s), value: (s) => hex(u32(s.pc) + 4) },
+  'w_add4_m4': { active: (s) => !(s.control_signals.branch && s.branch.taken),
+                 value: (s) => hex(u32(s.pc) + 4) },
   // pcimmadder 的 PC 输入（减法那一路由 pcimmadder 自己算，这里只标它通了）
-  'w_immadd_m4': { active: (s) => s.branch.taken, value: (s) => hex(u32(s.branch.target_addr)) },
-  'w_immadd_m3': { active: (s) => s.control_signals.is_jalr },
-  'w_taken_m4': { active: (s) => s.branch.taken },
+  'w_immadd_m4': { active: (s) => s.control_signals.branch && s.branch.taken,
+                   value: (s) => hex(u32(s.branch.target_addr)) },
+  // pcmux3 的 0 口是 pc+imm（jal 走这条），1 口才是 &~1 后的 jalr 目标。
+  // 原先写成 is_jalr —— 正好接反：jal 时它该亮却灭着，jalr 时它不该亮却亮着。
+  'w_immadd_m3': { active: (s) => !s.control_signals.is_jalr },
+  'w_taken_m4': { active: (s) => s.control_signals.branch && s.branch.taken },
   'w_sel_m1': { active: pcSel },
   'w_sel_m2': { active: jumpOrJalr },
   'w_sel_m3': { active: (s) => s.control_signals.is_jalr },
   'w_dec_branch': { active: (s) => s.control_signals.branch },
-  'w_alu_zf': { active: () => true, value: (s) => (s.alu.zero ? 'ZF=1' : 'ZF=0') },
-  // pcmux2 → pcmux1：这条线传的是「选中的 PC 目标」，只有真发生了跳转才有值。
-  // 注意 jumpOrJalr 是个函数，必须调用——写成 `jumpOrJalr || ...` 是拿函数对象
+  // funct3[2] / funct3[0]：taken 靠这两位把六条分支判完
+  // （f3[2] 在 ZF 与 LT 之间选一路，f3[0] 选极性；f3[1] 只影响 alu_op，图上没有对应线）
+  'w_dec_f3sel': { active: (s) => s.control_signals.branch,
+                   value: (s) => `f3[2]=${f3bit(s, 2) ? 1 : 0}` },
+  'w_dec_pol': { active: (s) => s.control_signals.branch,
+                 value: (s) => `f3[0]=${f3bit(s, 0) ? 1 : 0}` },
+  // ALU 的两个标志位只在分支里有意义，而且按 funct3[2] 二选一：
+  //   f3[2]=0（beq/bne）→ 只有 ZF 进 taken，LT 那根线不通
+  //   f3[2]=1（blt/bge/bltu/bgeu）→ 只有 LT 进 taken
+  // 原先 w_alu_zf 写成 active: () => true（恒亮），于是它拖着 taken 单元在**每条指令**
+  // 上点亮——addi、lw、jal 全亮，和 dmem 被时钟线点亮、csr 被 src1_rdata 拖亮是同一类病。
+  'w_alu_zf': { active: (s) => s.control_signals.branch && !f3bit(s, 2),
+                value: (s) => (s.alu.zero ? 'ZF=1' : 'ZF=0') },
+  'w_alu_lt': { active: (s) => s.control_signals.branch && f3bit(s, 2),
+                value: (s) => (s.alu.less ? 'LT=1' : 'LT=0') },
+  // 注意 jumpOrJalr / pcSel 是函数，必须调用——写成 `jumpOrJalr || ...` 是拿函数对象
   // 当真值判断，恒为真，这条线会常亮（vue-tsc 会报 TS2322）。
-  'w_m2_m1': { active: (s) => s.branch.taken || jumpOrJalr(s) },
-  'w_m3_m2': { active: (s) => s.control_signals.is_jalr },
-  'w_m4_m2': { active: (s) => s.branch.taken },
-  'w_m1_m6': { active: () => true },
+  // pcmux2：1 口来自 pcmux3（jal/jalr），0 口来自 pcmux4（其余全部，分支也走这条）
+  'w_m3_m2': { active: jumpOrJalr },
+  'w_m4_m2': { active: (s) => !jumpOrJalr(s) },
+  // pcmux1：1 口来自 pcmux2，0 口来自 pc4adder，由 pcSel 二选一（与 w_add4_m1 互斥）
+  'w_m2_m1': { active: pcSel },
+  // pcmux6 / pcmux5 这两根线与上面同类，都是「汇入某个 MUX 的数据输入」：
+  //   w_m1_m6 → pcmux6 的 0 口，pcmux6 的 sel 是 is_mret（mret 时 PC 直接取 mepc，
+  //             所以这一路必须灭——原先写的是恒亮，mret 时学生看到的 PC 来路是错的）
+  //   w_m6_m5 → pcmux5 的 0 口，pcmux5 的 sel 是 trap_taken（中断时 PC 取 mtvec）
+  // 它们的 1 口是注解网络 mepc / mtvec（挂在端口上，不是线），那一侧由 NET_SIGNAL 管。
+  'w_m1_m6': { active: (s) => !isMret(s) },
   'w_m6_m5': { active: (s) => !s.trap.taken },
   'w_m5_pc': { active: () => true, value: (s) => hex(u32(s.next_pc)) },
   'w_alu_jalr': { active: (s) => s.control_signals.is_jalr, value: (s) => hex(s.alu.result) },

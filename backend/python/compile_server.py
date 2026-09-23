@@ -110,7 +110,13 @@ def compile_source(source: str, session_dir: Optional[str] = None) -> Dict[str, 
         result = _compile_with_gcc(source, out_dir)
         if result["success"]:
             return result
-        # gcc 失败时静默回退到微型汇编器
+        # gcc 在，但它编不过 —— 那就是学生代码真有错，直接把 gcc 的报错交回去。
+        # 原先这里**静默回退**到微型汇编器：学生写错一条指令，看到的却是回退器
+        # 报的另一句话（行号、措辞、指的位置都对不上），甚至可能被回退器按它自己的
+        # 宽松语法「编成功」跑出另一个程序。回退只在 gcc 根本不存在时才启用。
+        result["errors"] = result["errors"] or ["gcc 编译失败，且未输出错误信息"]
+        result["toolchain"] = "gcc"
+        return result
     return _compile_with_fallback(source, out_dir)
 
 

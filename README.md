@@ -1,32 +1,30 @@
 # RV32I 单周期模型机 —— 教学可视化仿真平台
 
-> 正式版本：**v1.2.0**（2026-09-23）
-
 > 一个全新的、教学导向的单周期 RISC-V 处理器可视化仿真平台。
 > 学生在浏览器中编写 RISC-V 汇编代码，实时观察每条指令在单周期数据通路中的完整执行过程。
 
+当前正式版本：**v1.3.0**（Git 分支：`release/v1.3.0`）。
+
 > ⚠️ **版权与出处声明（请务必阅读）**
 >
-> 本项目**不是原创作品**，而是基于学长 [Acai113](https://github.com/Acai113/RV32I-single-cycle)
-> （杭州电子科技大学教学团队）的原始 RISC-V 单周期仿真器进行的**继承式开发**。
+> 本项目**不是原创作品**，而是基于学长的原始单周期 RISC-V 仿真器进行的**继承式开发**。
 >
-> - 原始代码仓库：https://github.com/Acai113/RV32I-single-cycle
 > - CPU 模拟核心等绝大部分代码源自学长的工作；本仓库的贡献主要包括：补全中断/异常机制、适配 Windows 平台、后续前端功能扩展等；
-> - **请勿将本项目误认为原创作品**，引用或分发时请保留本声明及对原始作者的致谢；
+> - **请勿将本项目误认为原创作品**，引用或分发时请保留本声明及对学长的致谢；
 > - 仅供教学、学习、科研交流使用，**禁止商用**。
 
 ---
 
 ## ✨ 特性
 
-- **RV32I 指令集**：支持约 45 条基础整数指令（R/I/S/B/U/J 六种格式 + 系统指令）
+- **RV32I 指令集**：支持 46 条基础整数指令（R/I/S/B/U/J 六种格式 + 系统指令），编译器另外支持 `li`/`mv`/`la`/`j`/`ret`/`call`/`beqz`/`bnez` 等伪指令
 - **单周期执行模型**：一条指令一个周期，无流水线寄存器、无转发、无冒险检测
 - **完整数据通路可视化**：PC → IMEM → RegFile → ALU → DMEM → WB 全流程，活跃连线高流动画、动态数值覆盖
 - **信号逐波传播动画**：单周期 CPU 里一条指令 = 一个时钟周期，所以「波」模拟的是这条指令**内部组合逻辑的传播延迟**——信号从 PC 一级级传到寄存器堆的写入口（实测一条指令 8～14 波）。工具栏可【单步】逐波前进，也可【单条指令】按设定速度整条流动播完；速度播放途中可调
 - **实时信号面板**：控制信号、ALU 输入输出、内存读写、写回路径逐一展示，并**按波次逐块出现**——信号还没传到 ALU，ALU 那张卡片就不出现；寄存器值到最后一波才落定（波形图除外，它是跨周期视图，无「波内」概念）
 - **汇编编辑器**：CodeMirror 6 语法高亮 + 反汇编指令列表 + PC 高亮 + 断点
 - **异步 Python 中间层**：`websockets`（WebSocket 服务）+ `aiohttp`（HTTP 编译服务）
-- **双编译路径**：优先使用 `riscv-none-elf-gcc`，缺失时自动回退到内置 Python 微型汇编器
+- **双编译路径**：优先使用 `riscv-none-elf-gcc`；仅在 gcc 未安装时回退到内置 Python 微型汇编器，gcc 编译错误会原样返回
 
 ## 🏗️ 三层架构
 
@@ -47,7 +45,7 @@
 └──────────────────────────┬─────────────────────────────────┘
                            │ stdin/stdout 逐行 JSON
 ┌──────────────────────────▼─────────────────────────────────┐
-│ C++ 单周期模拟核心 (C++20)                                   │
+│ C++ 单周期模拟核心 (C++17)                                   │
 │  rv32i_core::step(): IF → ID → RegRead → EX → MEM → WB     │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -142,9 +140,16 @@ rv32i-single-cycle/
 │   │   ├── asm.py              # Python 微型汇编器
 │   │   └── config.py
 │   ├── asm_examples/           # 教学示例汇编
-│   └── test/                   # 测试脚本
-│       ├── test_sim.py         # C++ 模拟器端到端测试
-│       └── test_server.py      # Python 中间层集成测试
+│   └── test/                   # 测试
+│       ├── test_sim.py         # C++ 模拟器端到端测试（126 项断言）
+│       ├── test_asm.py         # 微型汇编器测试（55 项，含 19 条缺口用例）
+│       ├── test_server.py      # Python 中间层集成测试（11 项）
+│       └── difftest/           # ★ 与自写独立参照模型的差分测试（零依赖）
+│           ├── refmodel.py     #   独立 RV32I 参考实现（只依据 ISA 规范写成）
+│           ├── corpus.py       #   测试语料生成器（能造非法/保留编码）
+│           ├── run.py          #   锁步比对（55 个用例）
+│           ├── roundtrip.py    #   汇编 ↔ 反汇编往返一致性
+│           └── probe.py        #   非法编码组合全扫描
 ├── frontend/                   # Vue3 前端
 │   └── src/
 │       ├── components/
@@ -192,7 +197,7 @@ rv32i-single-cycle/
     "immediate": 0,
     "control_signals": { "reg_write": true, "alu_src": false, ..., "alu_op": "ADD" },
     "reg_reads": { "rs1": {"index":10,"value":42}, "rs2": {"index":10,"value":42} },
-    "alu": { "op1": 42, "op2": 42, "result": 84, "zero": false },
+    "alu": { "op1": 42, "op2": 42, "result": 84, "zero": false, "less": false },
     "memory": { "addr": "0x0", "read_data": "0x0", "access_type": "NONE", "access_size": 0 },
     "writeback": { "active": true, "reg_index": 10, "data": 84, "source": "ALU" },
     "branch": { "taken": false, "target_addr": "0x80000104" },
@@ -205,12 +210,26 @@ rv32i-single-cycle/
 ## 🧪 测试
 
 ```bash
-# C++ 模拟核心测试（22 项断言）
-cd backend/test && python3 test_sim.py
+cd backend/test
+python3 test_sim.py            # C++ 模拟核心端到端（126 项断言）
+python3 test_asm.py            # 微型汇编器（55 项）
+python3 test_server.py         # Python 中间层集成（11 项）
 
-# Python 中间层集成测试（WebSocket + 编译 + 运行）
-cd backend/test && python3 test_server.py
+python3 difftest/run.py        # 差分测试：与自写参照模型锁步比对（55 用例）
+python3 difftest/roundtrip.py  # 汇编 ↔ 反汇编往返一致性
+python3 difftest/probe.py      # 非法编码组合全扫描
 ```
+
+前端 / 几何 / 点亮语义的离线断言在仓库根目录一条命令跑完：
+
+```bash
+python3 tools/check_all.py     # 16 步：几何自检 + 4 份夹具的高亮与波次断言 + 关键字表对账
+```
+
+> **差分测试为什么重要**：`test_sim.py` 的期望值终究是人工写的，写错就会给 bug 背书
+> （AUIPC 算错曾长期潜伏，正是因为断言从被测对象自己的输出里取值）。
+> `difftest/` 里的参照模型是**照着 RISC-V 规范另写的一份实现**，与被测核心零共享代码，
+> 逐周期逐字段比对——这是唯一能证伪「后端整体正确」的手段。
 
 ## 🎯 已实现指令集
 
@@ -238,7 +257,7 @@ cd backend/test && python3 test_server.py
 - **协议**：每周期 `cycle_state` 带出 `csr` 快照（8 个关键寄存器）+ `trap` 段（本周期是否 trap、原因、mepc）
 - **兜底**：`mtvec == 0` 时发生 trap → 停机提示，兼容旧程序
 
-> 修复了原始代码两个潜伏 bug：① CSR 寄存器版指令（csrrw/csrrs/csrrc）误把 rs1"编号"当"值"；② 分支条件不满足时仍错误跳转（旧测试全用必然成立的分支，故未暴露）。
+> 修复了原始代码两个潜伏 bug：① CSR 寄存器版指令（csrrw/csrrs/csrrc）误把 rs1“编号”当“值”；② 分支条件不满足时仍错误跳转（旧测试全用必然成立的分支，故未暴露）。
 
 ## 🪟 Windows 兼容性
 
@@ -252,6 +271,9 @@ cd backend/test && python3 test_server.py
 ## 📚 文档
 
 - `docs/DEVELOPMENT.md` —— ★ 开发文档：三层架构 / 后端中断异常机制 / 中间层 / 前端 / 协议 / 测试 / 演示（与本仓库同步）
+- `docs/HL_CONTRACT.md` —— ★ 数据通路**点亮契约**：图上每根线、每个部件「本周期该不该亮」的判据，是前端全部断言的唯一来源
+- `docs/CHANGELOG.md` —— 按「一轮工作」记录的变更与复验方法
+- `docs/修复报告-2026-09-22.md` —— 正确性审计的完整报告：每个缺陷的症状 / 证据 / 修法 / 复验
 - 前端参考：五级流水线版 `RV64I/riscv-pipeline-frontend`
 
 ## 📄 许可证
