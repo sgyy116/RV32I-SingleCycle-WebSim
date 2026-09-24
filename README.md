@@ -1,0 +1,271 @@
+# RV32I 单周期模型机 —— 教学可视化仿真平台
+
+> 一个全新的、教学导向的单周期 RISC-V 处理器可视化仿真平台。
+> 学生在浏览器中编写 RISC-V 汇编代码，实时观察每条指令在单周期数据通路中的完整执行过程。
+
+> ⚠️ **版权与出处声明（请务必阅读）**
+>
+> 本项目**不是原创作品**，而是基于学长 [EverlastingSnow](https://github.com/EverlastingSnow)
+> （杭州电子科技大学教学团队）的原始 RISC-V 单周期仿真器进行的**继承式开发**。
+>
+> 原始代码仓库：
+>
+> - https://github.com/EverlastingSnow/riscv-pipeline-frontend
+> - https://github.com/EverlastingSnow/platform_riscv
+> - https://github.com/EverlastingSnow/RISC-V_Platform/tree/feature/k6-test
+>
+> - CPU 模拟核心等绝大部分代码源自学长的工作；本仓库的贡献主要包括：补全中断/异常机制、适配 Windows 平台、后续前端功能扩展等；
+> - **请勿将本项目误认为原创作品**，引用或分发时请保留本声明及对原始作者的致谢；
+> - 仅供教学、学习、科研交流使用，**禁止商用**。
+
+---
+
+## ✨ 特性
+
+- **RV32I 指令集**：支持约 45 条基础整数指令（R/I/S/B/U/J 六种格式 + 系统指令）
+- **单周期执行模型**：一条指令一个周期，无流水线寄存器、无转发、无冒险检测
+- **完整数据通路可视化**：PC → IMEM → RegFile → ALU → DMEM → WB 全流程，活跃连线高流动画、动态数值覆盖
+- **实时信号面板**：控制信号、ALU 输入输出、内存读写、写回路径逐一展示
+- **汇编编辑器**：CodeMirror 6 语法高亮 + 反汇编指令列表 + PC 高亮 + 断点
+- **异步 Python 中间层**：`websockets`（WebSocket 服务）+ `aiohttp`（HTTP 编译服务）
+- **双编译路径**：优先使用 `riscv-none-elf-gcc`，缺失时自动回退到内置 Python 微型汇编器
+
+## 🏗️ 三层架构
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ 前端 (Vue 3 + TypeScript + Vite)                            │
+│  代码编辑器 │ 数据通路 SVG 可视化 │ 寄存器/内存面板          │
+│  WebSocket ↔ ws://localhost:8080                           │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ JSON 消息
+┌──────────────────────────▼─────────────────────────────────┐
+│ Python 中间层 (websockets + aiohttp)                      │
+│  • server.py        WebSocket 服务 (端口 8080, websockets) │
+│  • ws_adapter.py    websockets 连接适配器                 │
+│  • cpp_bridge.py    C++ 子进程管理 + JSON 通信             │
+│  • compile_server.py HTTP 编译服务 (端口 8081, aiohttp)    │
+│  • asm.py           Python 微型汇编器（回退方案）           │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ stdin/stdout 逐行 JSON
+┌──────────────────────────▼─────────────────────────────────┐
+│ C++ 单周期模拟核心 (C++20)                                   │
+│  rv32i_core::step(): IF → ID → RegRead → EX → MEM → WB     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🚀 启动方法
+
+直接一键启动：
+- Windows：双击 `启动-Windows.bat`
+- Linux：`bash 启动-Linux.sh`
+
+也可以快速启动（三步）：
+
+### 前置要求
+
+| 依赖 | 版本 | 说明 |
+| ---- | ---- | ---- |
+| g++ | 8+ | C++17 即可（代码未用 C++20 特性，旧 g++ 也能编） |
+| Python | 3.9+ | 中间层（需 `pip install websockets aiohttp`） |
+| Node.js | 18+ | 前端（需 npm install） |
+| riscv-none-elf-gcc | 可选 | 有则优先编译，无则回退到内置汇编器 |
+
+### 第一步：编译 C++ 模拟核心
+
+```bash
+cd backend/cpp
+# 方式一：CMake
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+# 方式二：g++ 直接编译（Windows 输出 rv32i_sim.exe，Linux 去掉 .exe）
+mkdir -p build
+g++ -std=c++17 -O2 -I src src/main.cpp src/rv_core.cpp src/rv_disasm.cpp -o build/rv32i_sim.exe
+```
+
+### 第二步：启动 Python 中间层
+
+先安装依赖（用户级，无需 sudo）：
+
+```bash
+cd backend/python
+python3 -m pip install --user -r requirements.txt
+# 国内网络慢可用清华镜像:
+# python3 -m pip install --user -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+```
+
+再启动：
+
+```bash
+python3 server.py
+# 输出: HTTP 编译服务已启动: http://localhost:8081
+#       WebSocket 服务器已启动: ws://localhost:8080
+```
+
+### 第三步：启动前端
+
+```bash
+cd frontend
+npm install
+npm run dev
+# 打开 http://localhost:5173
+```
+
+## 📁 目录结构
+
+```
+RV32I-SingleCycle-WebSim/
+├── 启动-Windows.bat            # Windows 一键启动
+├── 启动-Linux.sh               # Linux 一键启动
+├── 使用说明.md                 # 使用说明（推荐先看）
+├── README.md
+├── backend/
+│   ├── cpp/                    # C++ 模拟核心
+│   │   ├── CMakeLists.txt
+│   │   └── src/
+│   │       ├── rv_common.hpp     # 指令编码联合体 + 操作码
+│   │       ├── rv_alu.hpp        # ALU（10 种运算）
+│   │       ├── rv_immgen.hpp     # 立即数生成器（I/S/B/U/J）
+│   │       ├── rv_regfile.hpp    # 寄存器堆（x0 硬连线 0）
+│   │       ├── rv_control.hpp    # 控制单元真值表
+│   │       ├── rv_memory.hpp     # 128KB 字节寻址内存
+│   │       ├── rv_elf_loader.hpp # ELF32 加载器
+│   │       ├── rv_disasm.hpp/cpp # 反汇编器
+│   │       ├── rv_core.hpp/cpp   # 单周期核心（step）
+│   │       ├── json_writer.hpp   # JSON 输出辅助
+│   │       └── main.cpp          # stdin/stdout JSON 命令循环
+│   ├── python/                 # Python 中间层
+│   │   ├── requirements.txt    # 依赖 (websockets, aiohttp)
+│   │   ├── server.py           # WebSocket 服务入口 (websockets)
+│   │   ├── ws_adapter.py       # websockets 连接适配器
+│   │   ├── ws_handler.py       # 消息路由
+│   │   ├── cpp_bridge.py       # C++ 子进程桥接
+│   │   ├── compile_server.py   # HTTP 编译服务 (aiohttp)
+│   │   ├── asm.py              # Python 微型汇编器
+│   │   └── config.py
+│   ├── asm_examples/           # 教学示例汇编
+│   └── test/                   # 测试脚本
+│       ├── test_sim.py         # C++ 模拟器端到端测试（22 项断言）
+│       ├── test_rv32.py        # RV32I 全指令 + 中断/异常专项测试（112 项断言）
+│       └── test_server.py      # Python 中间层集成测试
+├── frontend/                   # Vue3 前端
+│   └── src/
+│       ├── components/
+│       │   ├── datapath/       # ★ 数据通路可视化
+│       │   ├── editor/         # CodeMirror 编辑器
+│       │   ├── registers/      # 寄存器面板
+│       │   ├── memory/         # 内存视图
+│       │   └── layout/         # 布局组件
+│       ├── stores/             # Pinia 状态
+│       ├── data/               # 布局数据 + 示例程序
+│       └── types/              # 协议类型
+└── docs/
+```
+
+## 📡 通信协议（摘要）
+
+### 前端 → 后端（WebSocket JSON）
+
+```jsonc
+{"type": "load", "source": "addi t0, zero, 42\necall"}
+{"type": "step"}
+{"type": "run"}
+{"type": "pause"}
+{"type": "reset"}
+{"type": "set_breakpoint", "addr": "0x80000004"}
+{"type": "get_memory", "addr": "0x80000000", "count": 16}
+{"type": "get_disassembly", "addr": "0x80000000", "count": 256}
+```
+
+### 后端 → 前端（每周期完整状态）
+
+```jsonc
+{
+  "type": "cycle_state",
+  "cycle": 42,
+  "state": {
+    "pc": "0x80000100",
+    "next_pc": "0x80000104",
+    "instruction": "0x00a50533",
+    "disassembly": "add a0, a0, a0",
+    "instruction_fields": { "opcode": "0b0110011", "rd": 10, "format": "R", ... },
+    "immediate": 0,
+    "control_signals": { "reg_write": true, "alu_src": false, ..., "alu_op": "ADD" },
+    "reg_reads": { "rs1": {"index":10,"value":42}, "rs2": {"index":10,"value":42} },
+    "alu": { "op1": 42, "op2": 42, "result": 84, "zero": false },
+    "memory": { "addr": "0x0", "read_data": "0x0", "access_type": "NONE", "access_size": 0 },
+    "writeback": { "active": true, "reg_index": 10, "data": 84, "source": "ALU" },
+    "branch": { "taken": false, "target_addr": "0x80000104" },
+    "regfile": [0, 0, ...],
+    "halted": false
+  }
+}
+```
+
+## 🧪 测试
+
+```bash
+# RV32I 全指令 + 中断/异常专项测试（112 项断言）
+#   覆盖：ALU 边界（回绕/移位掩码/符号扩展）、访存与小端、分支/跳转、CSR 六种指令、
+#         8 类异常（ecall/ebreak/非法指令/非对齐取指/取指越界/非对齐读写/访存越界）、
+#         计时器中断三道门、mret 恢复、vectored mtvec、复位保留程序
+cd backend/test && python3 test_rv32.py
+
+# C++ 模拟核心端到端测试（22 项断言）
+cd backend/test && python3 test_sim.py
+
+# Python 中间层集成测试（WebSocket + 编译 + 运行）
+cd backend/test && python3 test_server.py
+```
+
+## 🎯 已实现指令集
+
+| 类别 | 指令 | 数量 |
+| ---- | ---- | ---- |
+| R 型 | ADD SUB SLL SLT SLTU XOR SRL SRA OR AND | 10 |
+| I 型算术 | ADDI SLTI SLTIU XORI ORI ANDI SLLI SRLI SRAI | 9 |
+| I 型访存 | LW LH LB LHU LBU | 5 |
+| 跳转 | JAL JALR | 2 |
+| S 型 | SW SH SB | 3 |
+| B 型 | BEQ BNE BLT BGE BLTU BGEU | 6 |
+| U 型 | LUI AUIPC | 2 |
+| 系统 | ECALL EBREAK **MRET** CSRRW/CSRRS/CSRRC/CSRRWI/CSRRSI/CSRRCI | 9 |
+
+> `ecall`/`ebreak`/非法指令已改为触发 **trap**；未配置 `mtvec` 时停机兜底（旧程序仍可用 `ecall` 结束）。
+
+## 🚦 中断与异常机制（已实现）
+
+在学长单周期核心基础上补全的**机器模式 trap 机制**：
+
+- **异常（同步）**：`ecall`(11)、`ebreak`(3)、非法指令(2)、取指地址非对齐(0)、取指访问错误(1)、
+  读地址非对齐(4)、读访问错误(5)、写地址非对齐(6)、写访问错误(7) → 保存 `mepc`/`mcause`/`mtval` → 关总闸(`mstatus.MIE`) → 跳转 `mtvec`
+- **trap 的指令无可见副作用**：发生异常的指令不写 rd、不写内存（在访存/写回之前判定）
+- **中断（异步）**：计时器中断(原因 `0x80000007`)，需过"三道门"：`mtime >= mtimecmp` + `mie.MTIE` + `mstatus.MIE`
+- **返回**：`mret` → `PC = mepc`，`MIE ← MPIE` 且 `MPIE ← 1`
+- **mtvec 两种模式**：低 2 位为 0 = 直接模式（一律跳 base）；为 1 = **vectored**（中断跳 `base + cause×4`，异常仍走 base）
+- **CSR 访问校验**：读/写未实现的 CSR、或写只读计数器（cycle/time/instret）→ 触发非法指令异常(2)
+- **计时器**：`mtime` = CSR `0xC01`（每周期 +1）；`mtimecmp` = **自定义 CSR `0x780`**（模拟器扩展，非标准）
+- **协议**：每周期 `cycle_state` 带出 `csr` 快照（8 个关键寄存器）+ `trap` 段（本周期是否 trap、原因、mepc）
+- **复位语义**：`reset` 只复位 CPU（PC 回到程序入口、寄存器与 CSR 清零），**保留已加载的程序**，复位后可继续执行
+- **兜底**：`mtvec == 0` 时发生 trap → 停机提示，兼容旧程序用 `ecall` 结束的写法
+
+> 测试驱动修复的问题（详见 `docs/DEVELOPMENT.md` 4.4）：原始代码 2 处潜伏 bug
+> （CSR 寄存器版把 rs1 编号当值、分支不满足条件仍跳转），本轮又补全/修复 5 处
+> （6 类异常缺失、CSR 无访问校验、`get_state` 有副作用、`reset` 清空程序、汇编器缺 `fence`）。
+
+## 🪟 Windows 兼容性
+
+原始代码面向 Linux，已适配 Windows（含中文路径）：
+
+- C++：`main.cpp` 用 `PeekNamedPipe` 替代 `poll.h`（`#ifdef _WIN32` 双平台）；`rv_elf_loader.hpp` 用 `CreateFileW` 支持中文路径
+- Python：文件读写统一 UTF-8；与 C++ 通信用**二进制管道** + `ensure_ascii=False`（天然规避 GBK/路径坑）
+- 中间层已装 `websockets` + `aiohttp`，两个端口都端到端验证通过
+- 测试脚本 `test_rv32.py`（112 项）/ `test_sim.py`（22 项）/ `test_server.py` 在 Windows 下均全过
+
+## 📚 文档
+
+- `docs/DEVELOPMENT.md` —— ★ 开发文档：三层架构 / 后端中断异常机制 / 中间层 / 前端 / 协议 / 测试 / 演示（与本仓库同步）
+- 前端参考：五级流水线版 `RV64I/riscv-pipeline-frontend`
+
+## 📄 许可证
+
+教学用途，仅供学习交流。

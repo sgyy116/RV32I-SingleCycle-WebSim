@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+/* naive-ui 配置层撑满视口，保证 h-full 高度链不断（页脚贴底、三栏满高） */
+.n-config-provider {
+  height: 100%;
+}
+
+/* 数据通路画布 */
+.datapath-svg text {
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+   连线基线（未激活）
+   规格约定：
+   - 参与数据流动的线路 = 虚线；所有虚线 dash/gap 统一为 7 5
+   - 不参与数据流动的线路 = 实线，线宽 0.6 倍
+   - 颜色保留图2色相、提高明度（变浅）
+--------------------------------------------------------------------------- */
+.base-wire {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.base-wire.data {
+  stroke: #94a3b8;
+  stroke-width: 2;
+  stroke-dasharray: 7 5;
+}
+.base-wire.control {
+  stroke: #b8c2cf;
+  stroke-width: 1.2;   /* 0.6 倍线宽 */
+}
+.base-wire.branch {
+  stroke: #f5b0b0;
+  stroke-width: 1.5;
+}
+.base-wire.zf {
+  stroke: #9adfee;
+  stroke-width: 1.6;
+  stroke-dasharray: 7 5;
+}
+.base-wire.interrupt {
+  stroke: #fdc48c;
+  stroke-width: 2;
+  stroke-dasharray: 7 5;
+}
+.base-wire.mret {
+  stroke: #dcc2f7;
+  stroke-width: 1.8;
+  stroke-dasharray: 7 5;
+}
+
+/* ---------------------------------------------------------------------------
+   活跃连线流动动画
+   统一流速：dash 周期 = 12px，动画时长统一 1s（取原最慢档 0.7s 向下取整对齐）
+--------------------------------------------------------------------------- */
+.active-wire {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 7 5;
+  animation: dash-march 1s linear infinite;
+}
+.active-wire.data   { stroke: #475569; stroke-width: 2.4; }
+.active-wire.control{ stroke: #64748b; stroke-width: 1.6; stroke-dasharray: none; animation: none; }
+.active-wire.branch { stroke: #e02020; stroke-width: 2; }
+.active-wire.zf     { stroke: #00a8cc; stroke-width: 2.2; }
+.active-wire.interrupt { stroke: #ff7a00; stroke-width: 2.6; }
+.active-wire.mret   { stroke: #8a2be2; stroke-width: 2.4; }
+
+@keyframes dash-march {
+  to {
+    stroke-dashoffset: -12;   /* 恰好一个虚线周期，循环无缝 */
+  }
+}
+
+/* 连线信号名标注（0.8 倍字号） */
+.wire-label {
+  font-size: 10px;
+  fill: #b6c0cd;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  pointer-events: none;
+  transition: fill 0.2s ease;
+}
+.wire-label.active {
+  font-weight: 600;
+}
+.wire-label.active.kind-data {
+  fill: #334155;
+}
+.wire-label.active.kind-control {
+  fill: #475569;
+}
+.wire-label.active.kind-branch {
+  fill: #e02020;
+}
+.wire-label.active.kind-zf {
+  fill: #0086a8;
+}
+.wire-label.active.kind-interrupt {
+  fill: #e06400;
+}
+.wire-label.active.kind-mret {
+  fill: #7a22d1;
+}
+.wire-value {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* 值闪烁动画 */
+@keyframes value-flash {
+  0% {
+    fill: #f59e0b;
+  }
+  100% {
+    fill: #0f172a;
+  }
+}
+.value-flash {
+  animation: value-flash 0.6s ease-out;
+}
+
+/* 自定义滚动条（指令列表等：常显滑动条） */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb {
+  background: #b9c3d0;
+  border-radius: 5px;
+  border: 2px solid #f1f5f9;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8fa0b3;
+}
