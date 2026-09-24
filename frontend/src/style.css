@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+/* 数据通路画布 */
+.datapath-svg text {
+  user-select: none;
+}
+
+/* 活跃连线流动动画 */
+.active-wire {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.active-wire.data {
+  stroke: #3b82f6;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+  animation: dash-march 0.6s linear infinite;
+}
+.active-wire.address {
+  stroke: #22c55e;
+  stroke-width: 2.5;
+  stroke-dasharray: 6 5;
+  animation: dash-march 0.8s linear infinite;
+}
+.active-wire.control {
+  stroke: #94a3b8;
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+  animation: dash-march 0.5s linear infinite;
+}
+.active-wire.alu {
+  stroke: #f97316;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+  animation: dash-march 0.6s linear infinite;
+}
+
+@keyframes dash-march {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+/* 模块活跃发光 */
+.module-active {
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7));
+}
+.module-hovered {
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.9));
+}
+
+/* 值闪烁动画 */
+@keyframes value-flash {
+  0% {
+    fill: #f59e0b;
+  }
+  100% {
+    fill: #0f172a;
+  }
+}
+.value-flash {
+  animation: value-flash 0.6s ease-out;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

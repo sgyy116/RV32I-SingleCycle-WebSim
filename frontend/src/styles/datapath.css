@@ -1,0 +1,112 @@
+/* ============================================================================
+ * datapath.css —— 数据通路「高亮」的样式（唯一一份）
+ *
+ * 为什么单独抽成一个文件：高亮效果要在两个地方出现——
+ *   1. 网页端：SceneNode.vue 把类名挂在 SVG 元素上，靠这份 CSS 出效果
+ *   2. 离线核对：tools/hl_preview.mjs 把这份 CSS 原样内联进生成的 SVG，
+ *      再用无头浏览器截图，用来核对「高亮的到底是哪几条线」
+ * 如果 CSS 抄成两份，截图核对的就是另一套效果，核对了也不算数。
+ *
+ * 全部规则限定在 .dp-svg 下面，所以放到全局样式里也不会污染别的组件。
+ * 类名：
+ *   dp-lit       本周期通电（连线加粗提亮 / 部件外框变蓝 / 网络标签变实线）
+ *   dp-dim       有状态但本周期没通电，压暗
+ *   dp-trap-lit  通电的 trap 部件，走红色系
+ *   dp-fresh     本波刚通电的连线，额外走流动虚线（见下）
+ * ========================================================================== */
+
+/* ---- 通电的连线 ----
+   这些类直接落在 path 元素上，CSS 的 stroke-width 能压过元素自己的呈现属性。 */
+.dp-svg .dp-lit {
+  stroke-width: 4.5;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 3px rgba(37, 99, 235, 0.5));
+}
+
+/* ---- 本波新生的连线：流动虚线 ----
+   逐波播放时，这一波刚通电的那几根线走虚线，并且虚线不间断地向前跑，
+   让「信号正沿着这根线传过去」看得出来。其余已亮的老线保持实线，形成对比。
+
+   必须写在 .dp-lit 之后并叠一个类名：.dp-lit 里那条 stroke-dasharray:none
+   权重是（0,2,0），同权重下后写的赢，但这里干脆提到（0,3,0）更保险。
+
+   位移量 26 = 16 + 10，正好一个周期，循环时接缝看不出来。offset 由大变小，
+   虚线沿路径方向前进，也就是从源部件流向目的部件。 */
+.dp-svg .dp-lit.dp-fresh {
+  stroke-dasharray: 16 10;
+  animation: dp-flow 0.6s linear infinite;
+}
+@keyframes dp-flow {
+  from { stroke-dashoffset: 26; }
+  to   { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-svg .dp-lit.dp-fresh { animation: none; }
+}
+
+/* ---- 通电的部件 ----
+   外框是部件分组元素的子元素，它自带 stroke-width 呈现属性，继承压不过呈现属性，
+   所以必须用子选择器直接命中它。
+   注意：本文件会被 tools/hl_preview.mjs 原样内联进 SVG 的 style 元素，
+   而 SVG 是按 XML 解析的，所以全文（含注释）不许出现半角左尖括号和半角与号。 */
+.dp-svg g.module.dp-lit > *:first-child {
+  stroke: #2563eb;
+  stroke-width: 4.5;
+  filter: drop-shadow(0 0 7px rgba(37, 99, 235, 0.45));
+}
+.dp-svg g.module.dp-trap-lit > *:first-child {
+  stroke: #dc2626;
+  filter: drop-shadow(0 0 7px rgba(220, 38, 38, 0.6));
+}
+
+/* ---- 通电的网络标签：方框与文字一起由虚线变实线 ---- */
+.dp-svg g.netlabel.dp-lit rect {
+  stroke-width: 3;
+  stroke-dasharray: none;
+  fill: #eff6ff;
+}
+.dp-svg g.netlabel.dp-lit line {
+  stroke-width: 3.5;
+}
+.dp-svg g.netlabel.dp-lit text {
+  font-weight: 800;
+}
+
+/* ---- 没通电的连线与箭头压暗，让当前通路浮出来 ---- */
+.dp-svg .dp-dim {
+  opacity: 0.28;
+}
+
+/* ---- 实时数值气泡 ---- */
+.dp-svg .dp-badges g {
+  pointer-events: none;
+}
+.dp-svg .dp-badges rect {
+  fill: #fffbeb;
+  stroke: #d97706;
+  stroke-width: 1.6;
+}
+.dp-svg .dp-badges text {
+  fill: #b45309;
+  font-family: Consolas, monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ---- 悬停说明 ---- */
+.dp-svg .dp-tip {
+  pointer-events: none;
+}
+.dp-svg .dp-tip rect {
+  fill: #0f172a;
+  opacity: 0.96;
+}
+.dp-svg .dp-tip-title {
+  fill: #bfdbfe;
+  font-size: 14px;
+  font-weight: 800;
+}
+.dp-svg .dp-tip-line {
+  fill: #e2e8f0;
+  font-size: 12px;
+}
