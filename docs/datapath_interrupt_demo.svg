@@ -1,0 +1,259 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1300" viewBox="0 0 1680 1300" font-family="'Microsoft YaHei','PingFang SC',sans-serif">
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0H0V20" fill="none" stroke="#e2e9f2" stroke-width="1"/>
+    </pattern>
+    <marker id="ab" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#1a1a1a"/></marker>
+    <marker id="ao" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0 0L8 3.5L0 7Z" fill="#ff7a00"/></marker>
+    <marker id="ap" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0 0L8 3.5L0 7Z" fill="#8a2be2"/></marker>
+    <marker id="ac" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#00a8cc"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#e02020"/></marker>
+  </defs>
+
+  <rect width="1680" height="1300" fill="#fafcff"/>
+  <rect width="1680" height="1300" fill="url(#grid)"/>
+  <text x="620" y="30" font-size="24" font-weight="bold" fill="#1a1a1a">RV32I 单周期数据通路 —— 中断/异常机制扩展（示范图）</text>
+
+  <!-- ============ 基本连线（黑） ============ -->
+  <g stroke="#1a1a1a" stroke-width="1.7" fill="none">
+    <path d="M240 570 H350"/>                                <!-- PC → 指令存储器 a -->
+    <path d="M320 570 V860 H590 V1035 H1035 V420 H1024"/>    <!-- PC 反馈 → is_lui mux -->
+    <path d="M310 364 H340"/>                                <!-- 常数 4 -->
+    <path d="M385 330 V255 H1105 V1100 H1150 V917"/>          <!-- pc_add4 主干线 + link -->
+    <path d="M920 255 V180 H950"/>                            <!-- pc_add4 → ADD(imm) -->
+    <path d="M385 290 H305 V292"/>                            <!-- → pc_next mux 0 -->
+    <path d="M530 307 H470 V320 H330 V240 H327"/>             <!-- is_jalr mux 出 → pc_next mux 1 -->
+    <path d="M550 234 V270"/>                                 <!-- is_jump mux 出 → is_jalr mux -->
+    <path d="M760 190 H600 V175 H570"/>                       <!-- is_beq mux 出 → is_jump mux 0 -->
+    <path d="M545 600 H630"/>                                 <!-- inst → 译码器 -->
+    <path d="M680 520 H745" stroke-dasharray="4 3" stroke-width="1.3"/>
+    <path d="M680 640 H745" stroke-dasharray="4 3" stroke-width="1.3"/>
+    <path d="M680 670 H745" stroke-dasharray="4 3" stroke-width="1.3"/>
+    <path d="M680 700 H745" stroke-dasharray="4 3" stroke-width="1.3"/>
+    <path d="M680 780 H700 V985 H740" stroke-dasharray="4 3" stroke-width="1.3"/>
+    <path d="M780 960 V890 H712 V670" stroke-dasharray="4 3" stroke-width="1.3"/> <!-- &~1 门控输出 -->
+    <path d="M1015 545 H1057"/>                               <!-- src1_rdata → M_a -->
+    <path d="M1015 675 H1057"/>                               <!-- src2_rdata → M_b -->
+    <path d="M1022 675 V920 H1390 V790 H1420"/>               <!-- src2 → 数据存储器 d -->
+    <path d="M1093 555 H1230"/>                               <!-- a → ALU -->
+    <path d="M1093 690 H1230"/>                               <!-- b → ALU -->
+    <path d="M1340 600 H1420"/>                               <!-- F → 数据存储器 a -->
+    <path d="M1370 600 V780 H1338"/>                          <!-- F → is_lw mux -->
+    <path d="M1420 730 H1280 V800 H1302"/>                    <!-- spo → is_lw mux -->
+    <path d="M1320 748 V720 H1195 V862 H1168"/>               <!-- is_lw mux 出 → is_link mux -->
+    <path d="M675 800 V935 H1320 V832" stroke-dasharray="4 3" stroke-width="1.3"/>  <!-- is_lw -->
+    <path d="M645 800 V958 H1110 V875 H1132" stroke-dasharray="4 3" stroke-width="1.3"/> <!-- is_link -->
+    <path d="M205 660 V688"/>                                 <!-- clock -->
+    <path d="M110 700 H185 V660"/>                            <!-- reset -->
+    <path d="M110 935 H180"/>                                 <!-- timer_irq -->
+    <path d="M110 970 H180"/>                                 <!-- ext_irq -->
+  </g>
+
+  <!-- ============ 原图高亮：青色（数据） / 红色虚线（跳转分支控制） ============ -->
+  <g stroke="#00a8cc" stroke-width="1.8" fill="none">
+    <path d="M1040 185 H1060 V130 H830 V205 H800" marker-end="url(#ac)"/>   <!-- 分支目标 → is_beq mux 1 -->
+    <path d="M680 420 H985 V240" marker-end="url(#ac)"/>                    <!-- imm → ADD(imm) -->
+    <path d="M680 765 H1046 V705 H1057" marker-end="url(#ac)"/>             <!-- imm → M_b -->
+    <path d="M680 300 H620 V205 H570" marker-end="url(#ac)"/>               <!-- imm(jal) → is_jump mux 1 -->
+    <path d="M1340 530 H1310 V95 H785" marker-end="url(#ac)"/>              <!-- ZF → taken -->
+    <path d="M1355 600 V885 H600 V315 H570" marker-end="url(#ac)"/>         <!-- F → is_jalr mux（跳转目标） -->
+    <path d="M1150 833 V790 H960 V745" marker-end="url(#ac)"/>              <!-- 写回 → reg_wdata -->
+  </g>
+  <g stroke="#e02020" stroke-width="1.8" stroke-dasharray="7 4" fill="none">
+    <path d="M680 340 H725 V100 H705" marker-end="url(#ar)"/>               <!-- is_beq → taken -->
+    <path d="M745 115 V145 H780 V160" marker-end="url(#ar)"/>               <!-- taken → is_beq mux sel -->
+    <path d="M650 280 V120 H305 V188" marker-end="url(#ar)"/>               <!-- is_jump_branch -->
+    <path d="M665 280 V105 H550 V140" marker-end="url(#ar)"/>               <!-- is_jump -->
+    <path d="M630 368 H550 V344" marker-end="url(#ar)"/>                    <!-- is_jalr -->
+  </g>
+
+  <!-- ============ 新增：中断/异常信号（橙） 与 mret 返回（紫） ============ -->
+  <g stroke="#ff7a00" stroke-width="3" fill="none">
+    <path d="M350 1000 V1030" marker-end="url(#ao)"/>                       <!-- irq_pending -->
+    <path d="M180 1075 H140 V655 H135" marker-end="url(#ao)"/>              <!-- trap_taken / mret_sel -->
+    <path d="M1165 1000 H1120 V1210 H80 V585 H113" marker-end="url(#ao)"/>  <!-- mtvec → M_trap -->
+    <path d="M320 860 V1180 H1140 V1030 H1165" marker-end="url(#ao)"/>      <!-- PC → mepc（trap 保存） -->
+  </g>
+  <g stroke="#ff7a00" stroke-width="2" stroke-dasharray="7 4" fill="none">
+    <path d="M655 800 V930 H540 V1045 H520" marker-end="url(#ao)"/>         <!-- 异常：ecall 等 -->
+    <path d="M520 1080 H1165" marker-end="url(#ao)"/>                       <!-- 写 mepc/mcause/mstatus -->
+  </g>
+  <g stroke="#8a2be2" stroke-width="2.5" fill="none">
+    <path d="M1165 1055 H1100 V1230 H60 V615 H113" marker-end="url(#ap)"/>  <!-- mepc → PC（mret 返回） -->
+  </g>
+  <path d="M1165 1105 H520" stroke="#8a2be2" stroke-width="1.8" stroke-dasharray="6 4" fill="none" marker-end="url(#ap)"/> <!-- mstatus.MIE -->
+
+  <!-- ============ 结点 ============ -->
+  <g fill="#1a1a1a">
+    <circle cx="320" cy="570" r="3.2"/><circle cx="320" cy="860" r="3.2"/>
+    <circle cx="385" cy="290" r="3.2"/><circle cx="690" cy="255" r="3.2"/>
+    <circle cx="920" cy="255" r="3.2"/><circle cx="1355" cy="600" r="3.2"/>
+    <circle cx="1370" cy="600" r="3.2"/><circle cx="1022" cy="675" r="3.2"/>
+    <circle cx="712" cy="670" r="3.2"/>
+  </g>
+
+  <!-- ============ 器件（原图风格：浅蓝） ============ -->
+  <g fill="#dbe4f0" stroke="#1a1a1a" stroke-width="1.8">
+    <rect x="170" y="540" width="70" height="120"/>          <!-- PC -->
+    <rect x="340" y="330" width="90" height="140"/>          <!-- ADD pc_add4 -->
+    <rect x="950" y="130" width="90" height="110"/>          <!-- ADD imm -->
+    <rect x="350" y="540" width="195" height="250"/>         <!-- 指令存储器 -->
+    <rect x="630" y="280" width="50" height="520"/>          <!-- 译码器 -->
+    <rect x="745" y="480" width="270" height="265"/>         <!-- 寄存器堆 -->
+    <rect x="1230" y="455" width="110" height="255"/>        <!-- ALU -->
+    <rect x="1420" y="560" width="140" height="270"/>        <!-- 数据存储器 -->
+  </g>
+  <g fill="#dbe4f0" stroke="#1a1a1a" stroke-width="1.6">
+    <ellipse cx="305" cy="240" rx="22" ry="52"/>             <!-- pc_next mux -->
+    <ellipse cx="550" cy="187" rx="20" ry="47"/>             <!-- is_jump mux -->
+    <ellipse cx="550" cy="307" rx="20" ry="37"/>             <!-- is_jalr mux -->
+    <ellipse cx="780" cy="205" rx="20" ry="45"/>             <!-- is_beq mux -->
+    <ellipse cx="745" cy="95" rx="40" ry="20" stroke="#e02020" fill="#fdeaea"/> <!-- taken -->
+    <ellipse cx="1042" cy="400" rx="18" ry="50"/>            <!-- is_lui mux -->
+    <ellipse cx="1075" cy="555" rx="18" ry="48"/>            <!-- src1 mux -->
+    <ellipse cx="1075" cy="690" rx="18" ry="48"/>            <!-- src2 mux -->
+    <ellipse cx="1320" cy="790" rx="18" ry="42"/>            <!-- is_lw mux -->
+    <ellipse cx="1150" cy="875" rx="18" ry="42"/>            <!-- is_link mux -->
+    <ellipse cx="780" cy="985" rx="40" ry="25"/>             <!-- &~1 -->
+  </g>
+
+  <!-- ============ 新增器件（浅橙） ============ -->
+  <g fill="#ffefdd" stroke="#d07000" stroke-width="2.2">
+    <ellipse cx="135" cy="600" rx="22" ry="55"/>             <!-- trap 选择 mux -->
+    <rect x="180" y="880" width="340" height="120"/>         <!-- 中断控制器 -->
+    <rect x="180" y="1030" width="340" height="120"/>        <!-- Trap 控制逻辑 -->
+    <rect x="1165" y="960" width="285" height="190"/>        <!-- CSR 寄存器组 -->
+  </g>
+
+  <!-- ============ 器件文字 ============ -->
+  <g fill="#1a1a1a" font-size="17" text-anchor="middle">
+    <text x="205" y="606" font-weight="bold">PC</text>
+    <text x="385" y="408" font-weight="bold">ADD</text>
+    <text x="995" y="192" font-weight="bold">ADD</text>
+    <text x="1285" y="592" font-size="26" font-weight="bold">ALU</text>
+    <text x="780" y="991" font-size="15" font-weight="bold">&amp;~1</text>
+  </g>
+  <g fill="#1a1a1a" font-size="16" text-anchor="middle">
+    <text x="447" y="648">（异步）</text>
+    <text x="447" y="676" font-weight="bold">指令存储器</text>
+    <text x="1490" y="690">（异步）</text>
+    <text x="1490" y="718" font-weight="bold">数据存储器</text>
+  </g>
+  <g fill="#1a1a1a" font-size="19" text-anchor="middle" font-weight="bold">
+    <text x="655" y="360">译</text><text x="655" y="480">码</text><text x="655" y="600">器</text>
+    <text x="880" y="510">寄存器堆</text>
+  </g>
+  <!-- 寄存器堆端口名 -->
+  <g fill="#1a1a1a" font-size="12.5">
+    <text x="753" y="524">src1_raddr</text>
+    <text x="753" y="644">src2_raddr</text>
+    <text x="753" y="674">reg_wen</text>
+    <text x="753" y="704">reg_waddr</text>
+    <text x="753" y="732">clock  reset</text>
+    <text x="1007" y="549" text-anchor="end">src1_rdata</text>
+    <text x="1007" y="679" text-anchor="end">src2_rdata</text>
+  </g>
+  <!-- 存储器端口名 -->
+  <g fill="#1a1a1a" font-size="12.5">
+    <text x="357" y="574">a</text><text x="357" y="614">d</text>
+    <text x="357" y="654">we</text><text x="357" y="694">clk</text>
+    <text x="537" y="604" text-anchor="end">spo</text>
+    <text x="1428" y="604">a</text><text x="1428" y="659">we</text>
+    <text x="1428" y="734">spo</text><text x="1428" y="794">d</text>
+    <text x="1490" y="822" text-anchor="middle">clk</text>
+    <text x="1237" y="559">a</text><text x="1237" y="694">b</text>
+    <text x="1333" y="604" text-anchor="end">F</text>
+  </g>
+  <!-- 多选器 0/1 -->
+  <g fill="#1a1a1a" font-size="11" text-anchor="middle">
+    <text x="313" y="283">0</text><text x="316" y="233">1</text>
+    <text x="564" y="180">0</text><text x="564" y="212">1</text>
+    <text x="557" y="290">0</text><text x="564" y="316">1</text>
+    <text x="771" y="232">0</text><text x="790" y="201">1</text>
+    <text x="1035" y="380">0</text><text x="1035" y="420">1</text>
+    <text x="1066" y="546">0</text><text x="1066" y="572">1</text>
+    <text x="1066" y="680">0</text><text x="1066" y="706">1</text>
+    <text x="1331" y="778">0</text><text x="1311" y="800">1</text>
+    <text x="1161" y="860">0</text><text x="1157" y="912">1</text>
+  </g>
+  <!-- taken / sel 标注 -->
+  <text x="745" y="101" font-size="14" fill="#e02020" text-anchor="middle" font-weight="bold">taken</text>
+  <text x="660" y="78" font-size="14" fill="#e02020" font-weight="bold">is_beq</text>
+  <text x="330" y="110" font-size="15" fill="#e02020" font-weight="bold">is_jump_branch</text>
+  <text x="560" y="97" font-size="15" fill="#e02020" font-weight="bold">is_jump</text>
+  <text x="558" y="362" font-size="14" fill="#e02020" font-weight="bold">is_jalr</text>
+  <text x="176" y="306" font-size="15" fill="#1a1a1a" font-weight="bold">pc_next</text>
+  <text x="600" y="243" font-size="15" fill="#00a000" font-weight="bold">pc_add4</text>
+  <text x="295" y="368" font-size="14" fill="#1a1a1a" text-anchor="end">4</text>
+  <text x="253" y="560" font-size="12" fill="#1a1a1a">32</text>
+  <text x="562" y="590" font-size="12" fill="#1a1a1a">inst 32</text>
+  <text x="940" y="410" font-size="14" fill="#00a8cc" font-weight="bold">imm</text>
+  <text x="830" y="757" font-size="14" fill="#00a8cc" font-weight="bold">imm</text>
+  <text x="990" y="86" font-size="16" fill="#00a8cc" font-weight="bold">ZF</text>
+  <text x="1000" y="122" font-size="12" fill="#00a8cc">分支目标 pc+imm</text>
+  <text x="1150" y="310" font-size="14" fill="#1a1a1a" font-weight="bold">is_sw</text>
+  <text x="880" y="372" font-size="14" fill="#1a1a1a" font-weight="bold">ALU_OP</text>
+  <text x="870" y="432" font-size="13" fill="#1a1a1a">is_lui</text>
+  <text x="870" y="455" font-size="13" fill="#1a1a1a">src1_ren</text>
+  <text x="850" y="800" font-size="13" fill="#1a1a1a">src2_ren</text>
+  <text x="830" y="927" font-size="13" fill="#1a1a1a">is_lw</text>
+  <text x="830" y="975" font-size="13" fill="#1a1a1a">is_link</text>
+  <text x="950" y="1088" font-size="15" fill="#00a000" font-weight="bold">pc_add4</text>
+  <text x="1000" y="782" font-size="12" fill="#00a8cc" font-weight="bold">reg_wdata</text>
+  <text x="212" y="710" font-size="13" fill="#1a1a1a">clock</text>
+  <text x="105" y="704" font-size="14" fill="#1a1a1a" text-anchor="end">reset</text>
+  <text x="105" y="928" font-size="13" fill="#ff7a00" text-anchor="end" font-weight="bold">timer_irq</text>
+  <text x="105" y="963" font-size="13" fill="#ff7a00" text-anchor="end" font-weight="bold">ext_irq</text>
+
+  <!-- ============ 新增模块内部文字 ============ -->
+  <g fill="#b35a00" font-size="16" text-anchor="middle" font-weight="bold">
+    <text x="350" y="905">中断控制器（新增）</text>
+    <text x="350" y="1055">Trap 控制逻辑（新增）</text>
+    <text x="1307" y="986">CSR 寄存器组（新增）</text>
+  </g>
+  <g fill="#7a4a10" font-size="12.5">
+    <text x="196" y="932">• timer_irq 计时器中断（mtime → mtimecmp 比较产生）</text>
+    <text x="196" y="955">• ext_irq 外部中断（设备/按键）</text>
+    <text x="196" y="978">• 中断使能 / 优先级 / 待决寄存</text>
+    <text x="196" y="1082">• 中断判优：pending ∧ mstatus.MIE</text>
+    <text x="196" y="1105">• 异常：ecall / ebreak / 非法指令 / 访存错</text>
+    <text x="196" y="1128">• 产生 trap_taken、mret、CSR 写入</text>
+    <text x="1180" y="1016">mepc    — trap 返回地址（← PC）</text>
+    <text x="1180" y="1040">mtvec   — trap 入口地址（→ PC mux）</text>
+    <text x="1180" y="1064">mcause  — trap 原因（写入）</text>
+    <text x="1180" y="1088">mstatus — MIE / MPIE（关中断/恢复）</text>
+    <text x="1307" y="1136" text-anchor="middle">clock</text>
+  </g>
+  <g fill="#b35a00" font-size="12.5" text-anchor="middle">
+    <text x="135" y="580" font-size="11">0</text>
+    <text x="122" y="590" font-size="11">1</text>
+    <text x="122" y="622" font-size="11">2</text>
+    <text x="135" y="648" font-size="11" font-weight="bold">sel</text>
+  </g>
+
+  <!-- 新增信号标注 -->
+  <text x="362" y="1022" font-size="14" fill="#ff7a00" font-weight="bold">irq_pending</text>
+  <text x="532" y="1043" font-size="13" fill="#ff7a00" font-weight="bold">异常：ecall/ebreak/非法指令</text>
+  <text x="600" y="1070" font-size="13" fill="#ff7a00" font-weight="bold">写 mepc / mcause / mstatus</text>
+  <text x="700" y="1098" font-size="13" fill="#8a2be2" font-weight="bold">mstatus.MIE</text>
+  <text x="640" y="1172" font-size="13" fill="#ff7a00" font-weight="bold">PC → mepc（trap 保存返回地址）</text>
+  <text transform="rotate(-90 126 900)" x="126" y="900" font-size="13" fill="#ff7a00" font-weight="bold" text-anchor="middle">trap_taken / mret_sel</text>
+  <text transform="rotate(-90 68 900)" x="68" y="900" font-size="13" fill="#ff7a00" font-weight="bold" text-anchor="middle">mtvec → PC（trap 入口）</text>
+  <text transform="rotate(-90 48 940)" x="48" y="940" font-size="13" fill="#8a2be2" font-weight="bold" text-anchor="middle">mepc → PC（mret 返回）</text>
+
+  <!-- ============ 图例 ============ -->
+  <g>
+    <rect x="1330" y="40" width="320" height="176" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.5"/>
+    <text x="1342" y="66" font-size="16" font-weight="bold" fill="#1a1a1a">图例</text>
+    <line x1="1342" y1="86" x2="1392" y2="86" stroke="#1a1a1a" stroke-width="1.7"/>
+    <text x="1400" y="90" font-size="12.5" fill="#1a1a1a">数据通路 / 基本连线</text>
+    <line x1="1342" y1="111" x2="1392" y2="111" stroke="#e02020" stroke-width="1.8" stroke-dasharray="7 4"/>
+    <text x="1400" y="115" font-size="12.5" fill="#1a1a1a">跳转/分支控制（原图）</text>
+    <line x1="1342" y1="136" x2="1392" y2="136" stroke="#00a8cc" stroke-width="1.8"/>
+    <text x="1400" y="140" font-size="12.5" fill="#1a1a1a">数据高亮：ZF / imm / 写回（原图）</text>
+    <line x1="1342" y1="161" x2="1392" y2="161" stroke="#ff7a00" stroke-width="3"/>
+    <text x="1400" y="165" font-size="12.5" fill="#1a1a1a">中断/异常信号（新增）</text>
+    <line x1="1342" y1="186" x2="1392" y2="186" stroke="#8a2be2" stroke-width="2.5" stroke-dasharray="6 4"/>
+    <text x="1400" y="190" font-size="12.5" fill="#1a1a1a">mret 返回路径（新增）</text>
+  </g>
+</svg>

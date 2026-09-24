@@ -1,0 +1,15 @@
+# Python 中间层依赖
+#
+#   websockets  —— WebSocket 服务器（RFC 6455），替代原先手写的 minimal_ws.py
+#   aiohttp     —— 异步 HTTP 编译服务（端口 8081），替代原先内置 http.server
+#
+# 安装（用户级，无需 sudo）:
+#   python3 -m pip install --user -r requirements.txt
+#
+# 国内网络慢可用清华镜像:
+#   python3 -m pip install --user -r requirements.txt \
+#       -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+websockets>=12.0
+aiohttp>=3.9.0
+
