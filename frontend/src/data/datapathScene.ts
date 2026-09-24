@@ -175,12 +175,14 @@ function shapeNode(m: ScaledModule): SceneNode | null {
   const { x, y, w, h, shape, flip } = m
   switch (shape) {
     case 'alu':
-      // 梯形：输入侧那条边全高，输出侧收窄，缺口开在输入侧
-      // flip=true 时整体左右镜像（输入在右边，例如 PC+imm 加法器）
+      // 等腰梯形输入边的中部挖等腰三角形。三处缺口使用相同的底边宽度；
+      // 小加法器处约为梯形长底边的 1/4～1/5。flip=true 时镜像到右侧。
+      const notchHalf = 26
+      const notchDepth = w * 0.23
       return mk('polygon', {
         points: flip
-          ? `${x + w},${y} ${x},${y + h * 0.25} ${x},${y + h * 0.75} ${x + w},${y + h} ${x + w * 0.88},${y + h * 0.5}`
-          : `${x},${y} ${x + w},${y + h * 0.25} ${x + w},${y + h * 0.75} ${x},${y + h} ${x + w * 0.12},${y + h * 0.5}`,
+          ? `${x + w},${y} ${x},${y + h * 0.22} ${x},${y + h * 0.78} ${x + w},${y + h} ${x + w},${y + h / 2 + notchHalf} ${x + w - notchDepth},${y + h / 2} ${x + w},${y + h / 2 - notchHalf}`
+          : `${x},${y} ${x + w},${y + h * 0.22} ${x + w},${y + h * 0.78} ${x},${y + h} ${x},${y + h / 2 + notchHalf} ${x + notchDepth},${y + h / 2} ${x},${y + h / 2 - notchHalf}`,
       })
     case 'mux':
       // 胶囊形（两端半圆的竖长条），还原示意图里 2 选 1 MUX 的画法
@@ -278,6 +280,17 @@ function portLabelNodes(ports: LayoutPort[], modById: Record<string, ScaledModul
     const m = modById[p.module]
     if (!m) continue
     const [px, py] = portPos(m, p.side, p.offset)
+    if (m.shape === 'mux' && (p.label === '0' || p.label === '1')) {
+      const cx = m.x + m.w / 2
+      out.push(mk('g', {}, {
+        meta: { kind: 'portLabel', id: p.id },
+        children: [
+          mk('circle', { cx: FX(cx), cy: FX(py), r: 11, fill: '#fff', stroke: '#94a3b8', 'stroke-width': 1 }),
+          mk('text', { x: FX(cx), y: FX(py + 5), 'text-anchor': 'middle' }, { text: p.label }),
+        ],
+      }))
+      continue
+    }
     let tx = px
     let ty = py + 4
     let anchor = 'middle'
@@ -287,6 +300,7 @@ function portLabelNodes(ports: LayoutPort[], modById: Record<string, ScaledModul
     if (p.side === 'bottom') { ty = py - 7 }
     out.push(mk('text', {
       x: FX(tx), y: FX(ty), 'text-anchor': anchor,
+      ...(m.id === 'decoder' && p.side === 'top' ? { 'font-size': 13 } : {}),
     }, { text: p.label, meta: { kind: 'portLabel', id: p.id } }))
   }
   return out
@@ -526,6 +540,17 @@ function computeWireLabels(wires: LayoutWire[], mods: ScaledModule[], sc: number
       if (chosen) break
     }
     if (!chosen) chosen = cand(order[0][1], 0.5, -OFF)
+
+    // src1_rdata 的短线只有寄存器堆与 muxa0 之间一小段，自动落点会压在部件旁。
+    // 放到 muxa0 下方留白区，文字框和实时值气泡仍共用这个锚点。
+    if (w.id === 'w_rf_ma0') {
+      const muxa0 = mods.find((m) => m.id === 'muxa0')
+      if (muxa0) {
+        const mx = muxa0.x + muxa0.w / 2 + 24 * sc
+        const my = muxa0.y + muxa0.h + 28 * sc
+        chosen = [mx - tw / 2, my - LABEL_H / 2, mx + tw / 2, my + LABEL_H / 2, mx, my]
+      }
+    }
 
     placed.push(chosen.slice(0, 4))
     labels.push({

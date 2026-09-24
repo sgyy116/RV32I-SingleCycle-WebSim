@@ -145,9 +145,9 @@
       "label": "译码器",
       "shape": "rect",
       "group": "ID",
-      "x": 524,
+      "x": 504,
       "y": 220,
-      "w": 50,
+      "w": 70,
       "h": 464,
       "tip": "译码器（高竖条）。左侧收指令，右侧出两个读地址、写使能、写地址给寄存器堆；其余控制信号走虚线"
     },
@@ -841,21 +841,21 @@
       "id": "decoder.f3sel_out",
       "module": "decoder",
       "side": "top",
-      "offset": 6,
+      "offset": 12,
       "label": "f3[2]"
     },
     {
       "id": "decoder.pol_out",
       "module": "decoder",
       "side": "top",
-      "offset": 18,
+      "offset": 32,
       "label": "f3[0]"
     },
     {
       "id": "decoder.branch_out",
       "module": "decoder",
       "side": "top",
-      "offset": 30,
+      "offset": 52,
       "label": ""
     },
     {
@@ -869,7 +869,7 @@
       "id": "decoder.alusrc_out",
       "module": "decoder",
       "side": "bottom",
-      "offset": 34,
+      "offset": 54,
       "label": ""
     },
     {
@@ -935,7 +935,7 @@
       "id": "decoder.link_out",
       "module": "decoder",
       "side": "bottom",
-      "offset": 10,
+      "offset": 30,
       "label": ""
     },
     {
@@ -1016,7 +1016,7 @@
       "id": "decoder.jumpjalr_out",
       "module": "decoder",
       "side": "top",
-      "offset": 46
+      "offset": 66
     },
     {
       "id": "pcmux6.m6_0",
@@ -1486,11 +1486,11 @@
           100
         ],
         [
-          510,
+          496,
           100
         ],
         [
-          510,
+          496,
           206
         ],
         [
@@ -1525,7 +1525,7 @@
       "label": "branch || jump || is_jalr",
       "points": [
         [
-          524,
+          504,
           440
         ],
         [
@@ -1573,7 +1573,7 @@
       "label": "is_jalr",
       "points": [
         [
-          524,
+          504,
           280
         ],
         [
@@ -1595,11 +1595,11 @@
       "label": "branch",
       "points": [
         [
-          554,
+          556,
           220
         ],
         [
-          554,
+          556,
           25
         ],
         [
@@ -1617,11 +1617,11 @@
       "label": "f3[2]",
       "points": [
         [
-          530,
+          516,
           220
         ],
         [
-          530,
+          516,
           44
         ],
         [
@@ -1639,11 +1639,11 @@
       "label": "f3[0]",
       "points": [
         [
-          542,
+          536,
           220
         ],
         [
-          542,
+          536,
           63
         ],
         [
@@ -1764,7 +1764,7 @@
           545
         ],
         [
-          524,
+          504,
           545
         ]
       ]
@@ -2084,11 +2084,11 @@
           293
         ],
         [
-          497,
+          480,
           293
         ],
         [
-          497,
+          480,
           238
         ],
         [

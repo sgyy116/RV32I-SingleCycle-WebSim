@@ -204,35 +204,34 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 
 <template>
   <div class="dp-wrap">
-    <!-- 顶部状态条 -->
-    <div class="status-pill">
-      <span>周期 #{{ sim.cycleCount }}</span>
-      <span class="sep">|</span>
-      <span class="mono">{{ st?.pc ?? '0x80000000' }}</span>
-      <span class="sep">|</span>
-      <span class="mono strong">{{ st?.disassembly ?? '尚未执行指令' }}</span>
-      <span v-if="wave.total > 0" class="wave-tag">
-        第 {{ wave.waveNo }} / {{ wave.total }} 波
-        <em v-if="wave.playing">▶</em>
-      </span>
-      <span v-if="hl.trapActive" class="trap-tag">异常 / 中断</span>
-    </div>
-
-    <!-- 缩放控制 -->
-    <div class="zoom-bar">
-      <span class="zoom-label">缩放</span>
-      <n-slider
-        class="zoom-slider"
-        :value="zoom"
-        :min="ZOOM_MIN"
-        :max="ZOOM_MAX"
-        :step="0.05"
-        :tooltip="false"
-        @update:value="setZoom"
-      />
-      <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
-      <button type="button" @click="resetView">1:1</button>
-      <span class="hint">滚轮缩放 · 拖动平移 · 悬停看说明</span>
+    <!-- 指令状态和缩放控制共用顶部工具条 -->
+    <div class="dp-toolbar">
+      <div class="status-pill">
+        <span>周期 #{{ sim.cycleCount }}</span>
+        <span class="sep">|</span>
+        <span class="mono">{{ st?.pc ?? '0x80000000' }}</span>
+        <span class="sep">|</span>
+        <span class="mono strong instruction-text">{{ st?.disassembly ?? '尚未执行指令' }}</span>
+        <span v-if="wave.total > 0" class="wave-tag">
+          第 {{ wave.waveNo }} / {{ wave.total }} 波
+          <em v-if="wave.playing">▶</em>
+        </span>
+        <span v-if="hl.trapActive" class="trap-tag">异常 / 中断</span>
+      </div>
+      <div class="zoom-bar">
+        <span class="zoom-label">缩放</span>
+        <n-slider
+          class="zoom-slider"
+          :value="zoom"
+          :min="ZOOM_MIN"
+          :max="ZOOM_MAX"
+          :step="0.05"
+          :tooltip="false"
+          @update:value="setZoom"
+        />
+        <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
+        <button type="button" @click="resetView">1:1</button>
+      </div>
     </div>
 
     <!-- 图例 -->
@@ -293,7 +292,9 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 .dp-svg { display: block; width: 100%; height: 100%; font-family: Inter, "Microsoft YaHei", sans-serif; cursor: grab; touch-action: none; }
 .dp-svg.dragging { cursor: grabbing; }
 
-.status-pill { position: absolute; z-index: 3; left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 9px; align-items: center; padding: 7px 14px; border-radius: 999px; background: rgba(15,23,42,.9); color: #e2e8f0; font-size: 12px; pointer-events: none; white-space: nowrap; }
+.dp-toolbar { position: absolute; z-index: 3; left: 50%; top: 10px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: max-content; max-width: calc(100% - 20px); }
+.status-pill { display: flex; min-width: 0; max-width: 100%; gap: 9px; align-items: center; padding: 7px 14px; border-radius: 999px; background: rgba(15,23,42,.9); color: #e2e8f0; font-size: 12px; white-space: nowrap; }
+.instruction-text { overflow: hidden; text-overflow: ellipsis; }
 .status-pill .sep { color: #64748b; }
 .mono { font-family: Consolas, monospace; }
 .strong { color: #bfdbfe; }
@@ -301,12 +302,11 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 .wave-tag { font-family: Consolas, monospace; color: #93c5fd; }
 .wave-tag em { font-style: normal; color: #4ade80; }
 
-.zoom-bar { position: absolute; z-index: 3; left: 12px; top: 10px; display: flex; gap: 8px; align-items: center; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgba(255,255,255,.94); }
+.zoom-bar { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgba(255,255,255,.94); }
 .zoom-label, .zoom-value { color: #475569; font-size: 12px; font-weight: 700; }
 .zoom-slider { width: 140px; }
 .zoom-bar button { padding: 5px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; font-size: 12px; cursor: pointer; }
 .zoom-bar button:hover { border-color: #2563eb; color: #2563eb; }
-.zoom-bar .hint { color: #94a3b8; font-size: 11px; }
 
 .legend { position: absolute; z-index: 3; left: 12px; bottom: 10px; display: flex; gap: 16px; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,.92); border: 1px solid #e2e8f0; color: #475569; font-size: 11px; pointer-events: none; }
 .legend span { display: flex; gap: 6px; align-items: center; }
