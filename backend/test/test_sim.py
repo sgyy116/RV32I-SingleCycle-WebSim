@@ -57,7 +57,7 @@ class Sim:
         assert resp.get("status") == "ok", resp
 
     def send(self, cmd):
-        # ensure_ascii=False: 保留真实 UTF-8 中文路径（学长 C++ 的极简 JSON 解析器不认 \uXXXX 转义）
+        # ensure_ascii=False: 保留真实 UTF-8 中文路径（C++ 的极简 JSON 解析器不认 \uXXXX 转义）
         self.proc.stdin.write(json.dumps(cmd, ensure_ascii=False) + "\n")
         self.proc.stdin.flush()
         line = self.proc.stdout.readline()

@@ -5,13 +5,17 @@
 
 当前正式版本：**v1.3.1**（Git 分支：`release/v1.3.1`）。历史版本以本地 Git 标签保存；日期命名的 0922、0923 原始目录已更名为带版本号的“原始快照”，与正式发布版并不相同。
 
-> ⚠️ **版权与出处声明（请务必阅读）**
->
-> 本项目**不是原创作品**，而是基于学长的原始单周期 RISC-V 仿真器进行的**继承式开发**。
->
-> - CPU 模拟核心等绝大部分代码源自学长的工作；本仓库的贡献主要包括：补全中断/异常机制、适配 Windows 平台、后续前端功能扩展等；
-> - **请勿将本项目误认为原创作品**，引用或分发时请保留本声明及对学长的致谢；
-> - 仅供教学、学习、科研交流使用，**禁止商用**。
+## 实现、参考与许可
+
+本项目是独立实现的 RV32I 单周期教学仿真平台，CPU 核心由项目团队编写。开发时参考过以下公开项目的教学场景和设计思路，感谢原作者分享：
+
+- [riscv-pipeline-frontend](https://github.com/EverlastingSnow/riscv-pipeline-frontend)
+- [RISC-V_Platform](https://github.com/EverlastingSnow/RISC-V_Platform)
+- [platform_riscv](https://github.com/EverlastingSnow/platform_riscv)
+
+这些链接是参考资料，不是本项目的源码出处。v1.1.0 起的旧版 README 曾把参考项目写成「原始代码仓库」，并称本项目为「继承式开发」、CPU 核心主要来自学长；项目团队现确认这些表述不准确。历史版本和 Git 标签保留原记录，本说明更正其出处描述。
+
+本项目有权许可的内容按仓库根目录的 [LICENSE](LICENSE) 提供。它是自定义的非商用许可，不是 [OSI 定义的开源许可证](https://opensource.org/osd)。第三方材料如有单独许可，仍按各自条款使用。
 
 ---
 
@@ -105,7 +109,7 @@ npm run dev
 - **Windows**：双击 `启动-Windows.bat`
 - **Linux**：`bash 启动-Linux.sh`
 
-> 另有 `start.sh` 是**继承来的开发脚本**：它用 `-std=c++20`（g++ 8/9 不认这个写法）且**每次启动都重编**。
+> 另有 `start.sh` 是早期开发脚本：它用 `-std=c++20`（g++ 8/9 不认这个写法）且每次启动都重编。
 > 交付时用的是上面两个启动器，它们只在缺模拟器时才编译、且用 `-std=c++17`。
 
 ## 📁 目录结构
@@ -248,7 +252,7 @@ python3 tools/check_all.py     # 16 步：几何自检 + 4 份夹具的高亮与
 
 ## 🚦 中断与异常机制（已实现）
 
-在学长单周期核心基础上补全的**机器模式 trap 机制**：
+本项目实现的机器模式 trap 机制：
 
 - **异常（同步）**：`ecall`(原因 11)、`ebreak`(原因 3)、非法指令(原因 2) → 保存 `mepc`/`mcause`/`mtval` → 关总闸(`mstatus.MIE`) → 跳转 `mtvec`
 - **中断（异步）**：计时器中断(原因 `0x80000007`)，需过"三道门"：`mtime >= mtimecmp` + `mie.MTIE` + `mstatus.MIE`
@@ -257,11 +261,11 @@ python3 tools/check_all.py     # 16 步：几何自检 + 4 份夹具的高亮与
 - **协议**：每周期 `cycle_state` 带出 `csr` 快照（8 个关键寄存器）+ `trap` 段（本周期是否 trap、原因、mepc）
 - **兜底**：`mtvec == 0` 时发生 trap → 停机提示，兼容旧程序
 
-> 修复了原始代码两个潜伏 bug：① CSR 寄存器版指令（csrrw/csrrs/csrrc）误把 rs1“编号”当“值”；② 分支条件不满足时仍错误跳转（旧测试全用必然成立的分支，故未暴露）。
+> 修复了早期版本的两个 bug：① CSR 寄存器版指令（csrrw/csrrs/csrrc）误把 rs1“编号”当“值”；② 分支条件不满足时仍错误跳转（旧测试全用必然成立的分支，故未暴露）。
 
 ## 🪟 Windows 兼容性
 
-原始代码面向 Linux，已适配 Windows（含中文路径）：
+早期版本面向 Linux，现已适配 Windows（含中文路径）：
 
 - C++：`main.cpp` 用 `PeekNamedPipe` 替代 `poll.h`（`#ifdef _WIN32` 双平台）；`rv_elf_loader.hpp` 用 `CreateFileW` 支持中文路径
 - Python：文件读写统一 UTF-8；与 C++ 通信用**二进制管道** + `ensure_ascii=False`（天然规避 GBK/路径坑）
@@ -274,8 +278,8 @@ python3 tools/check_all.py     # 16 步：几何自检 + 4 份夹具的高亮与
 - `docs/HL_CONTRACT.md` —— ★ 数据通路**点亮契约**：图上每根线、每个部件「本周期该不该亮」的判据，是前端全部断言的唯一来源
 - `docs/CHANGELOG.md` —— 按「一轮工作」记录的变更与复验方法
 - `docs/修复报告-2026-09-22.md` —— 正确性审计的完整报告：每个缺陷的症状 / 证据 / 修法 / 复验
-- 前端参考：五级流水线版 `RV64I/riscv-pipeline-frontend`
+- 设计参考项目见上文「实现、参考与许可」。
 
 ## 📄 许可证
 
-教学用途，仅供学习交流。
+详见仓库根目录的 [LICENSE](LICENSE)：可在保留署名和许可证的前提下，用于教学、学习、科研交流等非商业用途，并可修改、再分发。

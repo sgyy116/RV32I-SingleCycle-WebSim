@@ -14,7 +14,7 @@ COMPILE_OUTPUT_DIR = BACKEND_DIR / "compile_output"
 WEBSOCKET_PORT = int(os.environ.get("WS_PORT", 8080))
 COMPILE_PORT = int(os.environ.get("COMPILE_PORT", 8081))
 
-# 模拟器可执行文件路径（按平台选择；build 里可能残留学长的 Linux 版 rv32i_sim）
+# 模拟器可执行文件路径（按平台选择；build 里可能残留旧的 Linux 版 rv32i_sim）
 SIM_PATH = os.environ.get("RV32I_SIM_PATH")
 if SIM_PATH is None:
     exe_name = "rv32i_sim.exe" if os.name == "nt" else "rv32i_sim"
