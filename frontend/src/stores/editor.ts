@@ -12,6 +12,7 @@ export const useEditorStore = defineStore('editor', () => {
   const autoCompile = ref(true)
 
   function loadExample(index: number) {
+    // -1 是「自定义」哨兵（见 data/examples.ts 的 EXAMPLE_OPTIONS）：清空编辑器让用户自己写
     if (index === -1) {
       currentExample.value = -1
       code.value = ''

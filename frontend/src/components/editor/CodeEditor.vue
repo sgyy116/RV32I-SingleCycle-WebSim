@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { EditorView, lineNumbers, highlightActiveLine, keymap, drawSelection } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { indentWithTab, defaultKeymap, history, historyKeymap } from '@codemirror/commands'
@@ -8,11 +8,13 @@ import { NButton, NSelect } from 'naive-ui'
 import { Play } from 'lucide-vue-next'
 import { useEditorStore } from '@/stores/editor'
 import { useSimulatorStore } from '@/stores/simulator'
+import { useLayoutStore } from '@/stores/layout'
 import { riscvLang } from '@/utils/riscvLang'
-import { EXAMPLES } from '@/data/examples'
+import { EXAMPLE_OPTIONS } from '@/data/examples'
 
 const editor = useEditorStore()
 const sim = useSimulatorStore()
+const layout = useLayoutStore()
 
 const containerRef = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
@@ -59,6 +61,14 @@ onUnmounted(() => {
   view = null
 })
 
+// 折叠不销毁编辑器；展开后重新测量，保留内容、撤销栈和光标。
+watch(() => layout.leftCollapsed, async (collapsed) => {
+  if (!collapsed) {
+    await nextTick()
+    view?.requestMeasure()
+  }
+})
+
 // 外部更新（如选择示例）时同步编辑器内容
 watch(
   () => editor.currentExample,
@@ -71,17 +81,16 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
+  <!-- min-h-0 是必须的：没有它，这个 flex 子项的 min-height 默认是 auto，
+       内部 CodeMirror 一长就会把整个 pane 撑高、连带把页面撑出滚动条 -->
+  <div class="flex flex-col h-full min-h-0">
     <!-- 工具栏 -->
     <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
       <n-select
         v-model:value="editor.currentExample"
         class="flex-1"
         size="small"
-        :options="[
-          ...EXAMPLES.map((e, i) => ({ label: e.name, value: i })),
-          { label: '自定义', value: -1 },
-        ]"
+        :options="EXAMPLE_OPTIONS"
         @update:value="editor.loadExample"
       />
       <n-button

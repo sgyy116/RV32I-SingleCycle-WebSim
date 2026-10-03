@@ -14,16 +14,22 @@ check_all.py —— 一条命令跑完全部离线断言
   2. check_dangling.py   悬空端口扫描
   3. check_layout.py     几何自检（间距/重叠/端口位置）
   4. preview.mjs         场景树能不能建出来（datapathScene.ts 的绘制规则）
-  5. _hl_check.mjs   ×N  高亮语义：连线/网络/部件
-  6. _wave_check.mjs ×N  波次划分 + MUX 互斥 + 切片回归
-  7. _lang_check.mjs     前端关键字表 ↔ asm.py 实际能力
+  5. test_branch_visual.mjs  条件分支的图上接口：taken 用通用 branch_in 进、
+                         通用 branch.taken 出，没有 BEQ 专用端口/连线的残留
+  6. _hl_check.mjs   ×N  高亮语义：连线/网络/部件
+  7. _wave_check.mjs ×N  波次划分 + MUX 互斥 + 切片回归
+  8. _lang_check.mjs     前端关键字表 ↔ asm.py 实际能力
+  9. _glossary_check.mjs 术语表：字数 / 互链层级 / 别名冲突 / 图上映射覆盖率
+ 10. _palette_check.mjs  连线配色标准：CSS 高亮色 ↔ 调色板 ↔ 每条线的 kind，
+                         以及线色之间、线色与部件描边色之间够不够分得开
 
 用法：python tools/check_all.py [--no-regen]   （--no-regen 跳过第 1 步，用现成的 JSONL）
 退出码：0 = 没有失败（可能有跳过），1 = 有失败（哪一步失败会在结尾列出来）
 
-关于「跳过」：子脚本用退出码 3 表示「这次环境跑不了，不是断言失败」。目前只有
-_lang_check.mjs 会这样——它要读 riscvLang.ts，而那份文件依赖 @codemirror/language，
-交付包故意不带 frontend/node_modules。跳过**不算通过**，所以会在结尾单列出来，
+关于「跳过」：子脚本用退出码 3 表示「这次环境跑不了，不是断言失败」。目前有两个会这样：
+_lang_check.mjs 要读 riscvLang.ts，而那份文件依赖 @codemirror/language；
+_palette_check.mjs 要动态 import datapathPalette.ts。交付包故意不带
+frontend/node_modules，这两个就可能跳过。跳过**不算通过**，所以会在结尾单列出来，
 免得「没跑」被当成「跑过了」。
 """
 
@@ -44,6 +50,16 @@ FIXTURES = [
 
 # 子脚本约定：退出码 3 = 跳过（环境缺失，非断言失败）。见文件头说明。
 SKIP = 3
+
+# 中文 Windows 上 Python 3.14 的 stdout 默认是 GBK，而下面「语法高亮表 ↔ asm.py 对账」
+# 这一行的描述里有 U+2194，print 时直接抛 UnicodeEncodeError 把整个脚本崩掉——
+# 表现成「跑不完」，看着像断言失败，其实只是打印失败。子进程由 run() 设了
+# PYTHONIOENCODING，父进程自己也得设：改成 UTF-8，编不出的字符退化成 ? 而不是崩。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        pass
 
 
 def run(desc, argv, cwd=None):
@@ -73,6 +89,10 @@ def main():
     results.append(run("悬空端口扫描", [sys.executable, os.path.join(HERE, "check_dangling.py")]))
     results.append(run("几何自检", [sys.executable, os.path.join(HERE, "check_layout.py")]))
     results.append(run("场景树渲染（preview.mjs）", ["node", os.path.join(HERE, "preview.mjs")]))
+    # 条件分支的图上接口。datapathHighlight.ts 按 'state.branch.taken' 这套通用名字
+    # 找线，而名字写在 JSON 里、类型系统管不到；改错了是**静默**失效（分支永远不亮），
+    # 所以用断言钉住。脚本自己用 process.cwd() 找仓库根，run() 默认 cwd=ROOT 正好对上。
+    results.append(run("条件分支图上接口", ["node", os.path.join(HERE, "test_branch_visual.mjs")]))
 
     for _, out in FIXTURES:
         jl = os.path.join(HERE, "out", out)
@@ -84,6 +104,13 @@ def main():
         results.append(run(f"波次检查 {out}", ["node", os.path.join(HERE, "_wave_check.mjs"), jl]))
 
     results.append(run("语法高亮表 ↔ asm.py 对账", ["node", os.path.join(HERE, "_lang_check.mjs")]))
+    # --strict：MODULE_GLOSSARY / LABEL_GLOSSARY 映射的目标词条必须真存在。
+    # 图上 28 个部件现已全部有词条，映射表不该再有悬空项——再出现就是漏了。
+    results.append(run("术语表自检", ["node", os.path.join(HERE, "_glossary_check.mjs"), "--strict"]))
+    # 配色标准：CSS 的 --dp-hl-* ↔ 调色板的 HILITE ↔ 布局里每条线的 kind。
+    # 这三处跨了 CSS / TS / JSON 三种载体，编译器一个都管不到，且全都是**静默**
+    # 失效（线悄悄变蓝、控制线通电后虚线消失），只有断言抓得住。
+    results.append(run("连线配色标准", ["node", os.path.join(HERE, "_palette_check.mjs")]))
 
     print("")
     print("=" * 72)

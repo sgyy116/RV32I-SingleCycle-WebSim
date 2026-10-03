@@ -1,6 +1,8 @@
 # 单周期 RV32I 网页仿真器 —— 开发文档
 
-本项目的 RV32I 单周期核心由项目团队编写，支持机器模式中断、异常及 Windows 中文路径。设计参考项目和许可范围见仓库根目录的 `README.md` 与 `LICENSE`。
+> 本仓库是一套单周期 RV32I 仿真器的**持续开发**成果：
+> 在 RV32I 单周期核心上**补全机器模式中断/异常机制**，并适配 Windows（含中文路径）。
+> 当前维护者见仓库根 `README.md` 顶部。
 
 ---
 
@@ -12,7 +14,9 @@
 ## 2. 三层架构
 
 ```
-浏览器前端 (Vue3 + TypeScript + Vite, :5173)
+浏览器前端 (Vue3 + TypeScript + Vite)
+   交付形态: 预构建静态文件，由中间层在 :8081 一并伺服
+   开发形态: Vite 开发服务器 :5173（改前端源码时用）
    │ WebSocket(:8080)    HTTP 编译(:8081)
    ▼
 Python 中间层 (websockets + aiohttp)
@@ -26,19 +30,24 @@ C++ 单周期模拟核心 (rv32i_sim.exe)
 
 ## 3. 快速启动
 
-前置：g++ 8+、Python 3.9+（`pip install websockets aiohttp`）、Node 18+（前端）。
+前置：g++ 8+、Python 3.9+（`pip install websockets aiohttp`）。
+Node 18+ 只在**开发模式**下改前端源码时才需要。
 
 ```bash
 # 1) 编译 C++ 核心（Windows 输出 rv32i_sim.exe）
 cd backend/cpp && g++ -std=c++17 -O2 -I src src/main.cpp src/rv_core.cpp src/rv_disasm.cpp -o build/rv32i_sim.exe
 
-# 2) 启动 Python 中间层（两个端口 8080 WS / 8081 HTTP）
-cd backend/python && python server.py
+# 2) 启动 Python 中间层（8080 WS / 8081 HTTP，并伺服前端静态文件）
+cd backend/python && python -B server.py
+# 浏览器打开 http://localhost:8081
 
-# 3) 启动前端开发服务器
+# 3) 仅在改前端源码时：另起 Vite 开发服务器
 cd frontend && npm install && npm run dev
-# 浏览器打开 http://localhost:5173
+# 开发地址 http://localhost:5173
 ```
+
+前端默认走**预构建静态文件**（`frontend/dist`，由 `compile_server.build_app()` 挂到 8081）。
+改了 `frontend/src` 之后必须重新 `npm run build`，8081 才会用上新代码。
 
 > 改动 C++ 前先关闭网页（否则运行的 rv32i_sim.exe 会锁住文件导致编译 Permission denied）。
 
@@ -129,16 +138,17 @@ mtime(0xC01) ≥ mtimecmp(0x780)   ← 事件"到了"（挂起）
 - `csr`：mtvec/mepc/mcause/mstatus/mie/mip/mtime/mtimecmp 八个值
 - `trap`：本周期是否取 trap（taken/cause/mepc/mtval）
 
-### 4.4 早期版本修复的 bug
+### 4.4 修复的 C++ 核心潜伏 bug
 
 | # | 现象 | 根因 | 后果 |
 |---|---|---|---|
 | 1 | csrrw/csrrs/csrrc 写错值 | 把 rs1 **寄存器编号**当**值**用 | 写 mtvec/mepc 全错 |
 | 2 | 循环无法退出 | 分支**不满足条件**时 target 未回退 PC+4，所有分支无条件跳 | 任何不跳的分支死循环 |
 | 3 | <16 字节程序加载失败 | 加载器把"≥16 字节"检查放在 ELF 判断**之前** | 小裸程序被误杀 |
-| 4 | 中间层选错模拟器 | config 候选路径先命中旧的 Linux 版 `rv32i_sim` | WinError 193 |
+| 4 | 中间层选错模拟器 | config 候选路径先命中残留的 Linux 版 `rv32i_sim` | WinError 193 |
 
-> 前三个问题未被早期测试覆盖：测试只涉及必然成立的分支、较大的程序和只读 CSR。后来加入循环、8 字节程序及写入 `mtvec` 的用例，才发现这些问题。
+> 前三个在核心代码里潜伏多年——旧测试全用“必然成立的分支/足够大的程序/只读 CSR”，从没触发；
+> 我们写真实程序（循环、8 字节程序、写 mtvec）把它们逼了出来。这就是“真实用例 + 回归测试”的价值。
 
 ### 4.5 Windows 兼容
 
@@ -161,6 +171,16 @@ mtime(0xC01) ≥ mtimecmp(0x780)   ← 事件"到了"（挂起）
 每个浏览器连接对应**独立 C++ 模拟器进程**（进程级隔离），连接关闭自动清理。
 
 ## 6. 前端设计（Vue3 + TS + Vite）
+
+### 6.0 两种运行方式
+
+| | 交付（默认） | 开发 |
+|---|---|---|
+| 页面 | `frontend/dist` 由中间层在 **8081** 伺服 | Vite 开发服务器 **5173**（热更新） |
+| 何时构建 | 打包前 `npm run build` 一次 | 改完想看效果时 `npm run build` |
+
+两种方式共用同一个后端（8080 WS + 8081 HTTP）。注意 `dist/` 是**构建产物**：
+改完 `src/` 不重新构建，8081 送出去的仍是旧页面——这是最容易踩的坑。
 
 ### 6.1 数据流
 
@@ -188,7 +208,36 @@ mtime(0xC01) ≥ mtimecmp(0x780)   ← 事件"到了"（挂起）
 | `components/panels/InstructionPanel.vue` | 指令信号 + ★中断/异常卡片（按波次门控）|
 | `components/registers / memory` | 寄存器/内存面板（按波次门控）|
 | `components/panels/WaveformPanel.vue` | ★波形图（见下。**不跟波次**）|
+| `data/glossary.ts` | ★百科全书词条数据（171 条 / 11 分类）+ 图上部件→词条的映射表 |
+| `data/glossaryQuery.ts` | ★检索与互链：归一化 / 打分 / `[[id]]` 解析 / 字数口径 |
+| `stores/glossary.ts` | 浮层状态：开关、宽度持久化、搜索词、分类、返回栈 |
+| `components/glossary/*.vue` | 浮层外壳 / 搜索框 / 列表 / 词条详情 / 正文渲染（5 个）|
 | `types/simulation.ts` | 与后端 JSON 对应的类型（含 csr/trap）|
+
+#### 百科全书（`data/glossary.ts` + `glossaryQuery.ts`）
+
+面向**零基础新生**的内置术语词典。设计上有几处非显然的取舍，改之前先读：
+
+- **互链语法是 `[[id]]` / `[[id|显示文字]]`**，不用 Markdown 的 `[文字](id)`。三种备选方案
+  （纯 id 列表前端匹配 / Markdown 链接 / 结构化段落数组）都被否掉，理由写在 `glossary.ts` 里。
+- **只许链接 `level <=` 自己的词条**，由 `_glossary_check.mjs` 硬性把关。「自动识别正文里的
+  术语并加链接」**刻意不做**——中文没有词边界，「寄存器」会命中「寄存器堆」、「指令」会命中
+  「伪指令」，自动加链必然链错。
+- **检索归一化会抹平下划线**：`MemtoReg` ≡ `mem_to_reg`、`ALUSrc` ≡ `alu_src`。所以同一条词条
+  里不能同时写这两种写法（会被判「本条内重复」）。加别名前先想一遍 `normalize()` 的结果。
+- **检索只看 `term` / `en` / `aliases`，不看正文。** 正文里提到的英文名（`MemRead`、`is_lui`…）
+  一律要显式登记成别名，否则学生搜不到。
+- **中文刻意不用编辑距离**：`寄存器` / `寄存器堆` 距离为 1，用编辑距离会把语义上的**包含**
+  误判成拼写错误；`mtvec`/`mepc`/`mcause` 这类只差几个字母的 CSR 更会互相误配。中文的「相近」
+  只走包含/前缀。拼音也**刻意不做**。
+- **拼写近似是「弱命中」**（分数全部落在 `RELEVANCE_FLOOR` 之下），只用于「你是不是想找」列表；
+  **反向包含是「强命中」**，且要求命中串盖住查询 1/4 以上（`REVERSE_MIN_COVER`），否则短别名
+  的字母巧合会抢走正确答案（详见 `docs/CHANGELOG.md` 第七轮）。
+- **150 字口径的唯一实现在 `glossaryQuery.ts` 的 `visibleLength()`**——检查脚本 import 同一个
+  函数，不重抄。口径抄成两份迟早分叉，然后就有两套「150 字」互相打架。
+- **图上点击不走 DOM `@click`**：`DatapathView` 的 `onDown` 调了 `setPointerCapture`，浏览器会把
+  派生出的 `click` 重定向到 `<svg>`，挂在部件 `<g>` 上的处理器**静默失效**（不报错）。所以改成在
+  `onUp` 里做几何命中（`moduleAt`），原因写在那个函数上方的注释里——**别改回 DOM @click**。
 
 ### 6.3 本项目新增功能
 
@@ -260,7 +309,7 @@ mtime(0xC01) ≥ mtimecmp(0x780)   ← 事件"到了"（挂起）
 ## 8. 测试与验证
 
 ```bash
-# C++ 核心端到端（126 项断言：算术/访存/分支/跳转/lui/auipc/伪指令/非法编码/停机）
+# C++ 核心端到端（22 项断言：算术/访存/分支/跳转/lui/auipc/停机）
 cd backend/test && python test_sim.py
 
 # 中间层集成（11 项：hello/load/step/run/断点/内存）
@@ -296,6 +345,25 @@ node tools/hl_preview.mjs tools/out/_csr_states.jsonl 0
 > （`from '../frontend/src/data/datapathWave.ts'`），且那些 `.ts` 只能用
 > **可擦除语法**（禁 `enum` / `namespace` / 构造器参数属性）。
 > 另外**不要改 `computeHighlight` 的签名**——`_hl_check.mjs` 直接调它，会当场炸掉。
+
+`tools/check_all.py` 把上面全部串成一条命令（**19 步**，加 `--no-regen` 跳过前 4 步的
+状态流重新生成，变 15 步）。子脚本用**退出码 3 表示「这次环境跑不了」**——不算通过，
+脚本会在结尾单列出来，免得「没跑」被当成「跑过了」。
+
+### 术语表自检（`tools/_glossary_check.mjs`）
+
+机器查不了「这条解释写得对不对」——那是人的事。但它能让**格式与引用完整性这一层
+100% 可靠**，人工复核时就只剩内容要盯。硬失败项：id 正则、`term`/`id` 归一后唯一、
+category/scope/level 合法、正文可见字数 ≤150、正文无 `<` `>` `**` `](`、`[[id]]` 目标
+存在且不比本条目更难、无自链接、两条词条正文雷同、别名归一后不撞别人的名字、
+`MODULE_GLOSSARY` 覆盖全部 28 个 module id。`--strict` 时连「映射的目标词条是否已录入」
+也判失败（`check_all.py` 默认带 `--strict`）。
+
+另外出一份**界面字符串可检索率**报表：把图上渲染出的线名/部件标题/副标题**按分隔符
+拆成词**后逐条过检索函数，列出够不到阈值的。只报信息、不算失败（标点、纯数字本来
+就不该有词条），但它能照出「新加了一根线叫 xxx、却忘了补词条」这类漏洞。
+**加了新线名或新部件后一定要看这一行。**
+
 
 验证策略说明：本项目未做与 Spike（Linux 官方参考模拟器）的差分测试——Windows 环境不可行；
 以「断言回归 + 中间层集成测试 + 网页手测 + 真实 demo」覆盖，且这些测试真实抓出并修复了 4 个潜伏 bug。

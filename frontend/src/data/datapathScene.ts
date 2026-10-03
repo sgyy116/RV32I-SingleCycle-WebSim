@@ -16,6 +16,8 @@
 // —— type / interface / as，不许出现 enum、namespace、构造器参数属性。
 // ============================================================================
 
+import { netKind, wireColor, wireSpec } from './datapathPalette.ts'
+
 // ---------------------------------------------------------------- 场景树类型
 
 export type SceneTag =
@@ -104,27 +106,37 @@ export interface DatapathLayout {
 
 // ---------------------------------------------------------------- 配色
 
+// 部件描边色。这套颜色**不是**信号语义（信号语义全在 datapathPalette.ts），
+// 只是「哪一类部件」的辅助分组，而且图例里没有它 —— 图例只有「线的类别」和
+// 「高亮状态」两块。既然没人会被告知这套编码，每一档就得自己站得住：
+//
+//   橙 = 运算部件（ALU 和两个加法器）
+//   靛 = 唯一那个 jalr 清洗用的圆圈
+//   红 = TRAP 分组（按 group 强制，与形状无关）
+//   灰 = 其余一切矩形 —— **MUX 也在这一档**
+//
+// MUX 曾是青色 #0284c7，2026-10-01 改灰。理由有两条：① 青色想表达的「这是
+// MUX」，胶囊形状本身就说完了，等于把同一件事说两遍，而 10 个 MUX 是带框
+// 模块里最大的一片（24 个里的 10 个）；② 它和青色的「地址 / PC」线色
+// #0891b2 只差 ΔE 10.94（色相只差 7 度）—— 青色地址线插进青色边框的 MUX 时
+// 线框分不干净，这是全图最差的一对。改灰后最差升到 11.94，而且那一对是
+// trap 线 vs trap 框，是**故意**留的一档明度差（见 HILITE 的注释）。
+//
+// 填充色没动：MUX 仍是浅灰 #f1f5f9，和纯白矩形 #ffffff 的区别留着，
+// 免得胶囊和矩形只剩描边一个线索。底跟线不会撞色（底极浅、线极深）。
+//
+// tools/_palette_check.mjs 第 8 组会把「线 vs 框」的下限断言住，改浅了直接报错。
 const C: Record<string, { fill: string; stroke: string }> = {
   rect: { fill: '#ffffff', stroke: '#475569' },
   adder: { fill: '#fff7ed', stroke: '#ea580c' },
   alu: { fill: '#fff7ed', stroke: '#ea580c' },
-  mux: { fill: '#f1f5f9', stroke: '#0284c7' },
+  mux: { fill: '#f1f5f9', stroke: '#475569' },
   circle: { fill: '#eef2ff', stroke: '#4f46e5' },
   trap: { fill: '#fef2f2', stroke: '#dc2626' },
 }
 
-// 线色由信号性质决定（规则见 datapathLayout.json 的 _wire_rules）：
-//   data    蓝实线 —— 线上传的是「值」（指令码/地址/寄存器数据/立即数/ALU 结果）
-//   control 灰虚线 —— 线上传的是「判据或开关量」（译码器输出/选择端/写使能/分支判据）
-//   clock   紫实线 —— 全局时序信号（clk / reset）
-export const WIRE_COLOR: Record<string, string> = {
-  data: '#2563eb', control: '#94a3b8', clock: '#7c3aed', trap: '#dc2626',
-}
-const WIRE_COLOR_DEFAULT = WIRE_COLOR.data
-const LABEL_COLOR: Record<string, string> = {
-  data: '#1d4ed8', control: '#64748b', clock: '#6d28d9', trap: '#dc2626',
-}
-const LABEL_COLOR_DEFAULT = LABEL_COLOR.data
+// 线色不在这里定义 —— 全部来自 datapathPalette.ts（唯一真相源，图例也从它渲染）。
+// 六类的判定口径与配色理由见那个文件顶部的注释。
 
 /** 箭头尺寸（渲染像素）。每条线的末端都要有一个，方向 = 该线最后一段的走向。 */
 export const ARROW_L = 17
@@ -133,7 +145,7 @@ export const ARROW_W = 6.5
 /** 字号表（渲染后的最终像素值） */
 const FS = {
   module: 20,   // 矩形部件名
-  sub: 16,      // 矩形部件副标题（主标题的 0.8 倍）
+  sub: 16,      // 矩形部件副标题（按长度降档 14/15/16）
   textMod: 20,  // 纯文字标签（reset / clock / 常量）
   circle: 15,   // 圆圈部件
   aluChar: 18,  // ALU / 加法器的竖排字母
@@ -175,8 +187,12 @@ function shapeNode(m: ScaledModule): SceneNode | null {
   const { x, y, w, h, shape, flip } = m
   switch (shape) {
     case 'alu':
-      // 等腰梯形输入边的中部挖等腰三角形。三处缺口使用相同的底边宽度；
-      // 小加法器处约为梯形长底边的 1/4～1/5。flip=true 时镜像到右侧。
+      // 梯形：输入侧那条边保持竖直，输出侧收窄；输入边**中间挖一个等腰三角缺口**
+      // （教科书上的 ALU 画法）。三个 ALU/加法器共用同一份缺口尺寸，
+      // 小加法器处约为长底边的四分之一。
+      // 已核过端口落点：alu 左口在 79/222/272、pc4adder 在 31/129、
+      // pcimmadder（flip，缺口在右侧）在 26/101，没有一个落在缺口区间里。
+      // flip=true 时整体左右镜像（输入在右边，例如 PC+imm 加法器）
       const notchHalf = 26
       const notchDepth = w * 0.23
       return mk('polygon', {
@@ -280,6 +296,8 @@ function portLabelNodes(ports: LayoutPort[], modById: Record<string, ScaledModul
     const m = modById[p.module]
     if (!m) continue
     const [px, py] = portPos(m, p.side, p.offset)
+    // MUX 的 0/1 画成小圆圈（该选哪一路的编号），比裸数字好认。
+    // MUX 形状本身不绘制部件名（见 moduleNode），所以圆圈落在胶囊正中不会盖住任何字。
     if (m.shape === 'mux' && (p.label === '0' || p.label === '1')) {
       const cx = m.x + m.w / 2
       out.push(mk('g', {}, {
@@ -300,6 +318,8 @@ function portLabelNodes(ports: LayoutPort[], modById: Record<string, ScaledModul
     if (p.side === 'bottom') { ty = py - 7 }
     out.push(mk('text', {
       x: FX(tx), y: FX(ty), 'text-anchor': anchor,
+      // 译码器顶上的 f3[2] / f3[0] 只隔 20 原始像素，字号 16 时两个字宽约 37px 会压上，
+      // 单独降到 13（仍比原来的 12 大一档）才留得出净距。
       ...(m.id === 'decoder' && p.side === 'top' ? { 'font-size': 13 } : {}),
     }, { text: p.label, meta: { kind: 'portLabel', id: p.id } }))
   }
@@ -336,8 +356,9 @@ function netLabelNodes(ports: LayoutPort[], modById: Record<string, ScaledModule
     const tx = bx + w / 2
     const ty = by + H / 2 + FS.wire * 0.34
 
-    // 引线：从方框连到端口。网络标签接的都是数据端口，所以用 data 色（蓝）。
-    const c = WIRE_COLOR.data
+    // 引线颜色按这个网络属于哪一类信号走（pc→地址青、trap_taken→异常红…）。
+    // 以前这里硬编码 data 蓝，等于完全不传达类别，红绿两色在图例上就成了死条目。
+    const c = wireColor(netKind(p.net))
     const lx = p.side === 'right' ? bx : p.side === 'left' ? bx + w : px
     const ly = p.side === 'top' ? by + H : p.side === 'bottom' ? by : py
     // 箭头同样画在端口那头，方向指向端口（与普通连线一致）
@@ -381,10 +402,6 @@ interface Seg {
   kind: string
   /** 这一段是哪些连线贡献的。合并前恒为单元素，合并后取并集。 */
   ids: string[]
-}
-
-function wireStroke(kind?: string): string {
-  return WIRE_COLOR[kind || 'data'] || WIRE_COLOR_DEFAULT
 }
 
 /** 线段展开 + 共线合并 */
@@ -556,7 +573,9 @@ function computeWireLabels(wires: LayoutWire[], mods: ScaledModule[], sc: number
     labels.push({
       box: chosen.slice(0, 4),
       mx: chosen[4], my: chosen[5],
-      color: LABEL_COLOR[w.kind || 'data'] || LABEL_COLOR_DEFAULT,
+      // 线名与线同色。原来单独维护过一张更深的 LABEL_COLOR 表，但新的线色
+      // 已经是 700 级（白底对比度最低 4.76:1，够正文用），没必要再分家。
+      color: wireColor(w.kind),
       text, id: w.id,
     })
   }
@@ -652,10 +671,15 @@ export function buildDatapathScene(L: DatapathLayout): DatapathScene {
         pieces.push(`L ${FX(s.flip ? s.a : s.b)} ${FX(s.fix)}`)
         d = pieces.join(' ')
       }
+      const spec = wireSpec(s.kind)
+      // wk-<kind> 这个类名是给激活态用的：.dp-lit 会把线宽和线型一起抹平
+      // （stroke-width:4.5 + stroke-dasharray:none），控制线的虚线在**最需要
+      // 辨认的时刻**——也就是它通电的那一刻——反而消失了。datapath.css 里靠
+      // .wk-control.dp-lit 把虚线补回来。
       const attrs: Record<string, string | number> = {
-        d, stroke: wireStroke(s.kind), 'stroke-width': 2.5,
+        d, class: `wk-${spec.kind}`, stroke: spec.color, 'stroke-width': spec.width,
       }
-      if (s.kind === 'control') attrs['stroke-dasharray'] = '6 4'
+      if (spec.dash) attrs['stroke-dasharray'] = spec.dash
       wireChildren.push(mk('path', attrs, { meta: { kind: 'wire', wires: s.ids } }))
     }
     nodes.push(mk('g', {
@@ -682,7 +706,7 @@ export function buildDatapathScene(L: DatapathLayout): DatapathScene {
       const ny = dx                 // 垂线方向
       arrows.push(mk('polygon', {
         points: `${FX(x1)},${FX(y1)} ${FX(bx + ARROW_W * nx)},${FX(by + ARROW_W * ny)} ${FX(bx - ARROW_W * nx)},${FX(by - ARROW_W * ny)}`,
-        fill: wireStroke(w.kind),
+        fill: wireColor(w.kind),
       }, { meta: { kind: 'arrow', id: w.id, signal: incomingSignal(w) } }))
     }
     nodes.push(mk('g', {}, { children: arrows }))

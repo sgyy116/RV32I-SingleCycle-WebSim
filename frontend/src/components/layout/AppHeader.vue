@@ -1,12 +1,28 @@
 <script setup lang="ts">
-import { NButton, NButtonGroup, NSlider } from 'naive-ui'
-import { Play, Pause, RotateCcw, ChevronRight, ChevronsRight, ArrowLeft, ArrowRight } from 'lucide-vue-next'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { NSlider, NConfigProvider } from 'naive-ui'
+import { Play, Pause, RotateCcw, ChevronRight, ChevronsRight, ArrowLeft, ArrowRight, BookOpen } from 'lucide-vue-next'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
+import { useGlossaryStore } from '@/stores/glossary'
+// 校徽是仓库里的静态资源，Vite 会收进 dist/assets/ 并改名（env.d.ts 已声明 *.webp）
 import hduLogo from '../../../hdu.webp'
 
 const sim = useSimulatorStore()
 const wave = useWaveStore()
+const glossary = useGlossaryStore()
+const headerEl = ref<HTMLElement | null>(null)
+let heightObserver: ResizeObserver | null = null
+
+onMounted(() => {
+  const updateHeight = () => {
+    if (headerEl.value) document.documentElement.style.setProperty('--rv-header-h', `${headerEl.value.getBoundingClientRect().height}px`)
+  }
+  updateHeight()
+  heightObserver = new ResizeObserver(updateHeight)
+  if (headerEl.value) heightObserver.observe(headerEl.value)
+})
+onUnmounted(() => heightObserver?.disconnect())
 
 /** 复位要连波次一起清，否则画面上还留着上一份程序的全亮态 */
 function onReset() {
@@ -14,74 +30,134 @@ function onReset() {
   sim.reset()
 }
 
+// ---------------------------------------------------------------------------
+// 顶栏按钮：原生 <button> + Tailwind，不走 naive 的 n-button。
+//
+// 为什么不用 naive 的按钮：naive 的默认型按钮是「**透明底 + 深灰字 #333639**
+// + 浅灰描边」，为浅色背景设计。压在深色顶栏上对比度只有 1.46:1，这就是
+// 「单步等指令看不清」的真正原因——**不是底色太深**。而 naive 的按钮要改成
+// 白字方案得同时覆盖 color/colorHover/colorPressed/colorFocus/colorDisabled
+// 加上 textColor*5、border*5 十几个键，漏一个就会在 hover 的瞬间露出浅底深字。
+// 顶栏是全项目唯一的深色区，就这五个按钮 + 两个历史按钮，自己写反而确定。
+//
+// 代价：失去 naive 的 ripple/focus 动画，所以下面自己补了 focus-visible 描边
+// 和 disabled 态。写 Tailwind 类名而不是动态拼字符串，是为了让 Tailwind 的
+// 扫描器能直接认出这些类（它是纯文本正则扫的，拼出来的名字扫不到）。
+// ---------------------------------------------------------------------------
+const BTN_BASE =
+  'h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border text-xs font-bold whitespace-nowrap ' +
+  'transition-colors cursor-pointer ' +
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#93c5fd] ' +
+  'disabled:opacity-40 disabled:cursor-not-allowed'
+/** 普通按钮：白字 + 浅描边 + 透明底 */
+const BTN_GHOST =
+  BTN_BASE +
+  ' border-[#64748b] text-[#f8fafc] hover:bg-white/10 hover:border-[#94a3b8] active:bg-white/20' +
+  ' disabled:hover:bg-transparent disabled:hover:border-[#64748b]'
+/** 主操作（运行）：实心蓝 */
+const BTN_PRIMARY =
+  BTN_BASE +
+  ' border-[#2563eb] bg-[#2563eb] text-white hover:bg-[#3b82f6] hover:border-[#3b82f6] active:bg-[#1d4ed8]' +
+  ' disabled:hover:bg-[#2563eb] disabled:hover:border-[#2563eb]'
+/** 术语词典展开态 */
+const BTN_ON = BTN_BASE + ' border-[#2563eb] bg-[#2563eb] text-white hover:bg-[#3b82f6] hover:border-[#3b82f6]'
+/** 只有图标的 */
+const BTN_ICON = BTN_GHOST + ' px-2'
+
+/** 速度滑轨在深色顶栏上也必须是浅色，否则深蓝滑轨压在深蓝底上等于没有 */
+const sliderTheme = {
+  Slider: {
+    fillColor: '#93c5fd',
+    fillColorHover: '#bfdbfe',
+    railColor: 'rgba(255,255,255,.25)',
+    railColorHover: 'rgba(255,255,255,.4)',
+    handleColor: '#f8fafc',
+  },
+}
 </script>
 
 <template>
-  <header class="app-header shrink-0 flex items-center gap-3 px-4 bg-slate-900 text-white border-b border-slate-700">
-    <!-- Logo -->
+  <!-- 顶栏可换行；实际高度同步给词典浮层。示例选择仅保留编辑器内一处。 -->
+  <header ref="headerEl" class="app-header shrink-0 flex items-center gap-2 px-3 md:px-4 bg-slate-700 text-[#f8fafc] border-b border-slate-600">
+    <!-- Logo：窄屏只留徽标。徽标加白底是因为校徽本身是深色线条，压在 slate-700 上看不清 -->
     <div class="flex shrink-0 items-center gap-2 mr-2">
       <img :src="hduLogo" alt="杭州电子科技大学" class="w-8 h-8 rounded-lg object-contain bg-white" />
-      <div class="leading-tight">
-        <div class="text-sm font-semibold">RV32I 单周期模型机</div>
-        <div class="text-[10px] text-slate-400">教学可视化仿真平台</div>
+      <div class="leading-tight hidden lg:block">
+        <div class="text-sm font-semibold whitespace-nowrap">RV32I 单周期模型机</div>
+        <div class="text-[10px] text-slate-300 whitespace-nowrap">教学可视化仿真平台</div>
       </div>
     </div>
 
-    <div class="header-spacer flex-1"></div>
+    <!-- 术语词典：界面上遇到的任何专有名词都能在这里查到 -->
+    <button
+      type="button"
+      :class="glossary.open ? BTN_ON : BTN_GHOST"
+      title="术语词典：看不懂的部件名、指令名、术语都查这里"
+      @click="glossary.toggle()"
+    >
+      <BookOpen :size="14" />
+      <span class="hidden md:inline">术语词典</span>
+    </button>
+
+    <div class="header-spacer flex-1 min-w-0"></div>
 
     <!-- 控制按钮组：粒度由细到粗 -->
-    <n-button-group size="small" class="shrink-0">
-        <n-button class="font-bold" color="#334155" text-color="#ffffff" :disabled="!sim.connected || sim.isHalted" @click="wave.stepWave()">
-          <template #icon><ChevronRight :size="15" /></template>
-          单步
-        </n-button>
+    <div class="primary-controls shrink-0 flex items-center gap-1">
+        <button type="button" :class="BTN_GHOST" :disabled="!sim.connected || sim.isHalted" @click="wave.stepWave()">
+          <ChevronRight :size="15" />单步
+        </button>
 
-        <n-button class="font-bold" color="#334155" text-color="#ffffff" :disabled="!sim.connected || sim.isHalted" @click="wave.playInstruction()">
-          <template #icon><ChevronsRight :size="15" /></template>
-          单条指令
-        </n-button>
+        <button type="button" :class="BTN_GHOST" :disabled="!sim.connected || sim.isHalted" @click="wave.playInstruction()">
+          <ChevronsRight :size="15" />单条指令
+        </button>
 
-        <n-button class="font-bold" :disabled="!sim.connected || sim.isHalted || wave.playing" type="primary" @click="wave.startRun()">
-          <template #icon><Play :size="15" /></template>
-          运行
-        </n-button>
+        <button type="button" :class="BTN_PRIMARY" :disabled="!sim.connected || sim.isHalted || wave.playing" @click="wave.startRun()">
+          <Play :size="15" />运行
+        </button>
 
-        <n-button class="font-bold" color="#334155" text-color="#ffffff" :disabled="!wave.playing" @click="wave.pause()">
-          <template #icon><Pause :size="15" /></template>
-          暂停
-        </n-button>
+        <button type="button" :class="BTN_GHOST" :disabled="!wave.playing" @click="wave.pause()">
+          <Pause :size="15" />暂停
+        </button>
 
-        <n-button class="font-bold" color="#334155" text-color="#ffffff" :disabled="!sim.connected" @click="onReset">
-          <template #icon><RotateCcw :size="15" /></template>
-          复位
-        </n-button>
-    </n-button-group>
-
-    <!-- 流动速度：单位是「波/秒」。播放途中拖动立即生效 -->
-    <div class="flex shrink-0 items-center gap-2 text-xs font-bold text-white">
-      <span>速度</span>
-      <n-slider v-model:value="wave.speed" class="w-24" :min="1" :max="20" :step="1" />
-      <span class="w-16 font-mono text-white">{{ wave.speed }} 波/秒</span>
+        <button type="button" :class="BTN_GHOST" :disabled="!sim.connected" @click="onReset">
+          <RotateCcw :size="15" />复位
+        </button>
     </div>
 
-    <!-- 历史步进 -->
-    <n-button-group size="small" class="shrink-0">
-      <n-button size="small" class="font-bold" color="#334155" text-color="#ffffff" :disabled="sim.historyIndex <= 0" @click="sim.goBack()">
-        <template #icon><ArrowLeft :size="14" /></template>
-        上一步
-      </n-button>
-      <n-button size="small" class="font-bold" color="#334155" text-color="#ffffff" :disabled="sim.historyIndex >= sim.stateHistory.length - 1" @click="sim.goForward()">
-        <template #icon><ArrowRight :size="14" /></template>
-        下一步
-      </n-button>
-    </n-button-group>
+    <!-- 速度调节始终可用，窄屏随顶栏换行；嵌套主题让深底上的滑轨可见。 -->
+    <n-config-provider abstract :theme-overrides="sliderTheme">
+      <div class="header-speed flex shrink-0 items-center gap-2 text-xs font-bold text-white">
+        <span class="whitespace-nowrap">速度</span>
+        <n-slider v-model:value="wave.speed" class="w-20 2xl:w-24" :min="1" :max="20" :step="1" :tooltip="false" />
+        <span class="w-14 font-mono text-slate-300 whitespace-nowrap">{{ wave.speed }} 波/秒</span>
+      </div>
+    </n-config-provider>
+
+    <!-- 历史步进保留文字，避免仅凭箭头理解操作。 -->
+    <div class="header-history flex shrink-0 items-center gap-1">
+      <button type="button" :class="BTN_ICON" :disabled="sim.historyIndex <= 0" @click="sim.goBack()">
+        <ArrowLeft :size="14" />上一步
+      </button>
+      <button
+        type="button"
+        :class="BTN_ICON"
+        :disabled="sim.historyIndex >= sim.stateHistory.length - 1"
+        @click="sim.goForward()"
+      >
+        <ArrowRight :size="14" />下一步
+      </button>
+    </div>
   </header>
 </template>
 
 <style scoped>
-.app-header { min-height: 56px; }
+.app-header { min-height: 56px; padding-top: 8px; padding-bottom: 8px; flex-wrap: wrap; }
 @media (max-width: 1100px) {
-  .app-header { flex-wrap: wrap; justify-content: center; padding-top: 8px; padding-bottom: 8px; }
+  .app-header { justify-content: center; }
   .header-spacer { display: none; }
+}
+@media (max-width: 480px) {
+  .primary-controls { flex-wrap: wrap; justify-content: center; min-width: 0; max-width: 100%; }
+  .primary-controls button { padding-left: 6px; padding-right: 6px; }
 }
 </style>

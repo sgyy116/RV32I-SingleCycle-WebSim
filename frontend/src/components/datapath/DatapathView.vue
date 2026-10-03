@@ -14,16 +14,20 @@
 // wave.shown 就是「本波为止该亮的东西」，本组件只管画。
 // ============================================================================
 
-import { computed, reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref } from 'vue'
 import { NSlider } from 'naive-ui'
+import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
+import { useGlossaryStore } from '@/stores/glossary'
 import { buildDatapathScene, type DatapathLayout, type SceneMeta } from '@/data/datapathScene'
+import { WIRE_KINDS, wireKindLabel } from '@/data/datapathPalette'
 import layoutJson from '@/data/datapathLayout.json'
 import SceneNode from './SceneNode.vue'
 
 const sim = useSimulatorStore()
 const wave = useWaveStore()
+const glossary = useGlossaryStore()
 const st = computed(() => sim.cycleState)
 
 // 布局是常量，场景树只建一次；故意不做成响应式——两千多个节点被 Vue 代理化纯属浪费，
@@ -42,7 +46,6 @@ const svgEl = ref<SVGSVGElement | null>(null)
 const view = reactive({ x: 0, y: 0, w: scene.width, h: scene.height })
 const ZOOM_MIN = 0.6
 const ZOOM_MAX = 1.6
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
 function resetView() {
   view.x = 0
@@ -50,8 +53,6 @@ function resetView() {
   view.w = scene.width
   view.h = scene.height
 }
-
-const zoom = computed(() => clamp(scene.width / view.w, ZOOM_MIN, ZOOM_MAX))
 
 /** 当前 viewBox 映射到屏幕的缩放比与留白（preserveAspectRatio="xMidYMid meet"） */
 function mapping() {
@@ -73,6 +74,9 @@ function toSvg(clientX: number, clientY: number) {
   }
 }
 
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+const zoom = computed(() => clamp(scene.width / view.w, ZOOM_MIN, ZOOM_MAX))
+
 function setZoom(value: number | [number, number], anchor?: { x: number; y: number }) {
   const target = Array.isArray(value) ? value[0] : value
   const nw = scene.width / clamp(target, ZOOM_MIN, ZOOM_MAX)
@@ -87,22 +91,72 @@ function setZoom(value: number | [number, number], anchor?: { x: number; y: numb
 function onWheel(ev: WheelEvent) {
   const p = toSvg(ev.clientX, ev.clientY)
   if (!p) return
-  const factor = 1.09 // 原缩放步长的 3/4，滚轮缩放更细
+  // 与 v1.3.1 相同的小步长；滑块和滚轮共用边界及坐标换算。
+  const factor = 1.09
   setZoom(ev.deltaY < 0 ? zoom.value * factor : zoom.value / factor, p)
 }
 
 let drag: { cx: number; cy: number; vx: number; vy: number } | null = null
 const dragging = ref(false)
 
+// ---------------------------------------------------------------- 点击部件查词条
+//
+// 为什么要自己判「这是点击还是拖动」：onDown 里调了 setPointerCapture，指针捕获一旦
+// 成立，浏览器会把这次按下派生的 click **重定向到捕获元素 <svg>**，挂在部件 <g> 上的
+// @click 根本收不到事件——而且不报错，静默失效，是最难查的那种坏法。
+//
+// 也不能改用 event.target / closest('g.module')：连线、线名、网络标签都画在部件
+// **之上**，在框里点一下，target 很可能落在压着它的某条线上。
+//
+// 所以点击判定放在 onUp：按下后位移没超过阈值，就算点击，再做一遍几何命中。
+// ⚠️ 这段的正确性依赖 onDown 里那次 setPointerCapture 与这里的阈值判定成对存在。
+//    日后若有人「顺手」把捕获挪到别处或改回 DOM @click，先重读这段。
+let gesture: { x: number; y: number; moved: boolean } | null = null
+/** 屏幕像素。触控板手抖一般 1~2px，4 足够容错，又不至于把真的拖动误判成点击 */
+const CLICK_SLOP = 4
+
+// 部件命中表。view 与 toSvg 用的都是**渲染坐标系**，而 JSON 里 module 的 x/y/w/h
+// 是示意图原始坐标（见 datapathScene 主入口的 sc 乘法），所以这里同样要乘 scale。
+// 各 shape（梯形 ALU、胶囊 MUX、椭圆、直角矩形）都画在这个方框之内，方框即命中区。
+const HIT_RECTS = (() => {
+  const sc = Number(LAYOUT.scale) || 1
+  return LAYOUT.modules.map((m) => ({
+    id: m.id,
+    label: m.label ?? m.id,
+    x: m.x * sc,
+    y: m.y * sc,
+    w: m.w * sc,
+    h: m.h * sc,
+    area: m.w * m.h,
+  }))
+})()
+
+function moduleAt(clientX: number, clientY: number) {
+  const p = toSvg(clientX, clientY)
+  if (!p) return null
+  let best: (typeof HIT_RECTS)[number] | null = null
+  for (const r of HIT_RECTS) {
+    if (p.x < r.x || p.x > r.x + r.w || p.y < r.y || p.y > r.y + r.h) continue
+    // 命中多个时取面积最小的那个：MUX 胶囊紧贴着别的框，不该被外面的大框吞掉
+    if (!best || r.area < best.area) best = r
+  }
+  return best
+}
+
 function onDown(ev: PointerEvent) {
   if (ev.button !== 0) return
+  ev.preventDefault()
   drag = { cx: ev.clientX, cy: ev.clientY, vx: view.x, vy: view.y }
+  gesture = { x: ev.clientX, y: ev.clientY, moved: false }
   dragging.value = true
   ;(ev.currentTarget as Element).setPointerCapture(ev.pointerId)
 }
 
 function onMove(ev: PointerEvent) {
   if (!drag) return
+  if (gesture && !gesture.moved) {
+    if (Math.hypot(ev.clientX - gesture.x, ev.clientY - gesture.y) > CLICK_SLOP) gesture.moved = true
+  }
   const m = mapping()
   if (!m) return
   view.x = drag.vx - (ev.clientX - drag.cx) / m.s
@@ -112,9 +166,15 @@ function onMove(ev: PointerEvent) {
 
 function onUp(ev: PointerEvent) {
   if (!drag) return
+  // pointercancel 也走这个函数，被系统取消的手势不该算点击
+  const wasClick = ev.type === 'pointerup' && gesture !== null && !gesture.moved
   drag = null
+  gesture = null
   dragging.value = false
   ;(ev.currentTarget as Element).releasePointerCapture(ev.pointerId)
+  if (!wasClick) return
+  const hit = moduleAt(ev.clientX, ev.clientY)
+  if (hit) glossary.openFromModule(hit.id, hit.label)
 }
 
 // ---------------------------------------------------------------- 数值气泡
@@ -172,7 +232,9 @@ function describe(m: SceneMeta): { title: string; lines: string[] } | null {
     const w = id ? wireById.get(id) : undefined
     if (!w) return null
     const lines: string[] = []
-    if (w.kind) lines.push(`类型：${w.kind}`)
+    // 显示中文类别名而不是 kind 这个英文 token —— 界面是中文的，
+    // 「类型：control」对学生等于没写。
+    if (w.kind) lines.push(`类型：${wireKindLabel(w.kind)}`)
     if (w.signal) lines.push(`后端字段：${w.signal}`)
     const v = hl.value.values.get(w.id)
     lines.push(v ? `本周期值：${v}` : hl.value.wires.has(w.id) ? '本周期有信号，无显示值' : '本周期无信号')
@@ -200,12 +262,45 @@ function onLeave() {
 const TIP_W = 300
 const visibleLines = computed(() => tooltip.value?.lines.slice(0, 4) ?? [])
 const tipH = computed(() => 34 + visibleLines.value.length * 18)
+
+// ---------------------------------------------------------------- 图例
+
+/** 窄屏默认收起：图例占左下角，主区一窄它就开始盖图。
+ *  门槛取 1280 是因为主区 = 窗口 − 左栏(clamp 240~380) − 右栏(clamp 240~340)，
+ *  1300 以下主区就不到 700px，两行图例横着铺不下。 */
+const legendOpen = ref(false)
+/** 用户手动点过之后就不再自动跟随窗口宽度 —— 他的选择优先。 */
+let legendTouched = false
+const mqWide = window.matchMedia('(min-width: 1280px)')
+/** 具名函数，不能写成两个匿名箭头函数 —— 那样 add 和 remove 拿到的不是同一个
+ *  引用，removeEventListener 会静默失效，监听器越积越多。 */
+function onMqChange(e: MediaQueryListEvent) {
+  if (!legendTouched) legendOpen.value = e.matches
+}
+if (!legendTouched) legendOpen.value = mqWide.matches
+mqWide.addEventListener('change', onMqChange)
+onUnmounted(() => mqWide.removeEventListener('change', onMqChange))
+
+function toggleLegend() {
+  legendTouched = true
+  legendOpen.value = !legendOpen.value
+}
 </script>
 
 <template>
   <div class="dp-wrap">
-    <!-- 指令状态和缩放控制共用顶部工具条 -->
+    <!-- 缩放和指令状态共用工具条；空间不足时换行，不叠压。 -->
     <div class="dp-toolbar">
+      <!-- 缩放控制 -->
+      <div class="zoom-bar">
+        <span class="zoom-label">缩放</span>
+        <n-slider class="zoom-slider" :value="zoom" :min="ZOOM_MIN" :max="ZOOM_MAX"
+          :step="0.05" :tooltip="false" @update:value="setZoom" />
+        <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
+        <button type="button" @click="resetView">1:1</button>
+      </div>
+
+      <!-- 顶部状态条 -->
       <div class="status-pill">
         <span>周期 #{{ sim.cycleCount }}</span>
         <span class="sep">|</span>
@@ -218,29 +313,47 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
         </span>
         <span v-if="hl.trapActive" class="trap-tag">异常 / 中断</span>
       </div>
-      <div class="zoom-bar">
-        <span class="zoom-label">缩放</span>
-        <n-slider
-          class="zoom-slider"
-          :value="zoom"
-          :min="ZOOM_MIN"
-          :max="ZOOM_MAX"
-          :step="0.05"
-          :tooltip="false"
-          @update:value="setZoom"
-        />
-        <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
-        <button type="button" @click="resetView">1:1</button>
-      </div>
     </div>
 
-    <!-- 图例 -->
+    <!-- 图例。两行：上面是「线传的是什么」，下面是「高亮表示什么」。
+         上面那一行的色块**全部由 WIRE_KINDS 渲染**，本组件里不出现任何 hex ——
+         图例和图上画的线读的是同一张表，所以不可能出现「图例说蓝、图上画绿」。
+
+         状态行里原来的「异常 / 中断」删掉了：红色线已经表达了同一件事，
+         留着会变成「两个红说的是两件事」。 -->
     <div class="legend">
-      <span><i class="sw on" />当前通路</span>
-      <span><i class="sw fresh" />本波新到</span>
-      <span><i class="sw off" />未激活</span>
-      <span><i class="sw badge" />实时数值</span>
-      <span><i class="sw trap" />异常 / 中断</span>
+      <button type="button" class="lg-toggle" :title="legendOpen ? '收起图例' : '展开图例'" @click="toggleLegend">
+        <ChevronDown v-if="legendOpen" :size="12" />
+        <ChevronRight v-else :size="12" />
+        图例
+      </button>
+
+      <template v-if="legendOpen">
+        <div class="lg-row">
+          <span class="lg-cap">线的类别</span>
+          <span v-for="k in WIRE_KINDS" :key="k.kind" class="lg-item">
+            <!-- 只有色块可点（且只有它开 pointer-events）—— 容器整块开 auto 会挡住
+                 图区左下角的平移和连线悬停。点开的是「线型」词条。 -->
+            <button
+              type="button"
+              class="lg-sw"
+              :title="`${k.label}：点开「线型」词条`"
+              @click="glossary.openRoot('wire-type')"
+            >
+              <i class="sw" :style="{ borderTopColor: k.color, borderTopStyle: k.dash ? 'dashed' : 'solid' }" />
+            </button>
+            {{ k.label }}
+          </span>
+        </div>
+
+        <div class="lg-row">
+          <span class="lg-cap">高亮状态</span>
+          <span class="lg-item"><i class="sw on" />当前通路</span>
+          <span class="lg-item"><i class="sw fresh" />本波新到</span>
+          <span class="lg-item"><i class="sw off" />未激活</span>
+          <span class="lg-item"><i class="sw badge" />实时数值</span>
+        </div>
+      </template>
     </div>
 
     <svg
@@ -250,6 +363,7 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
       :viewBox="`${view.x} ${view.y} ${view.w} ${view.h}`"
       preserveAspectRatio="xMidYMid meet"
       @wheel.prevent="onWheel"
+      @dragstart.prevent
       @pointerdown="onDown"
       @pointermove="onMove"
       @pointerup="onUp"
@@ -292,9 +406,12 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 .dp-svg { display: block; width: 100%; height: 100%; font-family: Inter, "Microsoft YaHei", sans-serif; cursor: grab; touch-action: none; }
 .dp-svg.dragging { cursor: grabbing; }
 
-.dp-toolbar { position: absolute; z-index: 3; left: 50%; top: 10px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: max-content; max-width: calc(100% - 20px); }
-.status-pill { display: flex; min-width: 0; max-width: 100%; gap: 9px; align-items: center; padding: 7px 14px; border-radius: 999px; background: rgba(15,23,42,.9); color: #e2e8f0; font-size: 12px; white-space: nowrap; }
-.instruction-text { overflow: hidden; text-overflow: ellipsis; }
+/* 缩放条和状态条共同参与排版，窄窗口换行，空白区域仍可操作图。 */
+.dp-toolbar { position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; pointer-events: none; }
+
+.status-pill { justify-self: center; min-width: 0; overflow: hidden; display: flex; gap: 9px; align-items: center; padding: 7px 14px; border-radius: 999px; background: rgba(15,23,42,.9); color: #e2e8f0; font-size: 12px; pointer-events: none; white-space: nowrap; }
+.status-pill { max-width: 100%; }
+.instruction-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .status-pill .sep { color: #64748b; }
 .mono { font-family: Consolas, monospace; }
 .strong { color: #bfdbfe; }
@@ -302,20 +419,27 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 .wave-tag { font-family: Consolas, monospace; color: #93c5fd; }
 .wave-tag em { font-style: normal; color: #4ade80; }
 
-.zoom-bar { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgba(255,255,255,.94); }
-.zoom-label, .zoom-value { color: #475569; font-size: 12px; font-weight: 700; }
-.zoom-slider { width: 140px; }
-.zoom-bar button { padding: 5px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; font-size: 12px; cursor: pointer; }
+.zoom-bar { min-width: 0; max-width: 100%; display: flex; gap: 8px; align-items: center; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgba(255,255,255,.94); pointer-events: auto; }
+.zoom-label, .zoom-value { flex-shrink: 0; color: #475569; font-size: 12px; font-weight: 700; }
+.zoom-slider { width: clamp(70px, 14vw, 140px); }
+.zoom-bar button { pointer-events: auto; padding: 5px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; font-size: 12px; cursor: pointer; }
 .zoom-bar button:hover { border-color: #2563eb; color: #2563eb; }
 
-.legend { position: absolute; z-index: 3; left: 12px; bottom: 10px; display: flex; gap: 16px; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,.92); border: 1px solid #e2e8f0; color: #475569; font-size: 11px; pointer-events: none; }
-.legend span { display: flex; gap: 6px; align-items: center; }
+/* 图例：两行，窄屏自动换行。整块保持 pointer-events:none —— 它压在图上，
+   开 auto 会挡住左下角的平移与连线悬停。只有折叠按钮和色块单独开。 */
+.legend { position: absolute; z-index: 3; left: 12px; bottom: 10px; display: flex; flex-direction: column; gap: 3px; padding: 5px 10px; border-radius: 8px; background: rgba(255,255,255,.94); border: 1px solid #e2e8f0; color: #475569; font-size: 11px; pointer-events: none; max-width: min(720px, calc(100% - 24px)); }
+.legend .lg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; }
+.legend .lg-cap { color: #94a3b8; }
+.legend .lg-item { display: flex; gap: 6px; align-items: center; }
+.legend .lg-toggle { display: flex; gap: 3px; align-items: center; align-self: flex-start; margin-left: -4px; padding: 1px 4px; border: 0; border-radius: 4px; background: none; color: #64748b; font: inherit; cursor: pointer; pointer-events: auto; }
+.legend .lg-toggle:hover { background: #f1f5f9; color: #0f172a; }
+.legend .lg-sw { display: flex; align-items: center; margin: 0; padding: 5px 2px; border: 0; background: none; cursor: pointer; pointer-events: auto; }
+.legend .lg-sw:hover { background: #f1f5f9; }
 .sw { display: inline-block; width: 22px; height: 0; border-top-width: 4px; border-top-style: solid; }
 .sw.on { border-color: #2563eb; }
 .sw.fresh { border-top-style: dashed; border-color: #2563eb; }
 .sw.off { border-color: #cbd5e1; }
 .sw.badge { border: 0; width: 14px; height: 14px; border-radius: 3px; background: #fffbeb; border: 1.6px solid #d97706; }
-.sw.trap { border-color: #dc2626; }
 
 .disconnected { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255,255,255,.75); color: #64748b; font-size: 14px; }
 </style>

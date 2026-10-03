@@ -8,7 +8,10 @@
 | ---- | ---- | ---- | ---- |
 | WebSocket | `ws://localhost:8080` | JSON 逐条消息 | 仿真控制 + 周期状态推送 |
 | HTTP | `http://localhost:8081/api/compile` | JSON POST | 汇编源码编译 |
+| HTTP | `http://localhost:8081/` | 静态文件 | 预构建前端页面（交付模式的入口；开发模式用 5173） |
 
+- 前端页面与编译 API **同源**（都在 8081），所以前端用相对路径 `/api/compile` 请求即可，
+  不需要 CORS；开发模式下由 Vite 开发服务器把 `/api` 代理到 8081。
 - Python 中间层每 WebSocket 客户端维护一个独立 C++ 子进程（进程级隔离）。
 - 命令均为「请求 → 响应」；`run` 为流式推送，直到 `halted` / `breakpoint_hit` / `paused`。
 

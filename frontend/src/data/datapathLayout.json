@@ -1271,7 +1271,7 @@
       "id": "w_pc_imem",
       "from": "PC.pc_out",
       "to": "imem.a",
-      "kind": "data",
+      "kind": "address",
       "signal": "state.pc",
       "label": "pc",
       "points": [
@@ -1289,7 +1289,7 @@
       "id": "w_pc_add4",
       "from": "PC.pc_out",
       "to": "pc4adder.a2",
-      "kind": "data",
+      "kind": "address",
       "signal": "state.pc",
       "points": [
         [
@@ -1314,7 +1314,7 @@
       "id": "w_c4_add4",
       "from": "const4.out",
       "to": "pc4adder.a1",
-      "kind": "data",
+      "kind": "imm",
       "signal": null,
       "label": "4",
       "points": [
@@ -1332,7 +1332,7 @@
       "id": "w_add4_m1",
       "from": "pc4adder.out",
       "to": "pcmux1.m1_0",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_plus_4",
       "label": "pc+4",
       "points": [
@@ -1358,7 +1358,7 @@
       "id": "w_add4_m4",
       "from": "pc4adder.out",
       "to": "pcmux4.m4_0",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_plus_4",
       "label": "pc+4",
       "points": [
@@ -1392,7 +1392,7 @@
       "id": "w_m2_m1",
       "from": "pcmux2.m2_out",
       "to": "pcmux1.m1_1",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_next",
       "points": [
         [
@@ -1409,7 +1409,7 @@
       "id": "w_m3_m2",
       "from": "pcmux3.m3_out",
       "to": "pcmux2.m2_1",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_next",
       "points": [
         [
@@ -1434,7 +1434,7 @@
       "id": "w_m4_m2",
       "from": "pcmux4.m4_out",
       "to": "pcmux2.m2_0",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_next",
       "points": [
         [
@@ -1451,7 +1451,7 @@
       "id": "w_immadd_m4",
       "from": "pcimmadder.out",
       "to": "pcmux4.m4_1",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_imm",
       "label": "pc+imm",
       "points": [
@@ -1469,7 +1469,7 @@
       "id": "w_immadd_m3",
       "from": "pcimmadder.out",
       "to": "pcmux3.m3_0",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_imm",
       "label": "pc+imm",
       "points": [
@@ -1708,7 +1708,7 @@
       "id": "w_const0_d",
       "from": "const0.out",
       "to": "imem.d",
-      "kind": "data",
+      "kind": "imm",
       "signal": null,
       "label": "0",
       "points": [
@@ -1773,7 +1773,7 @@
       "id": "w_dec_ra1",
       "from": "decoder.ra1_out",
       "to": "regfile.ra1",
-      "kind": "control",
+      "kind": "address",
       "signal": "state.instruction_fields.rs1",
       "label": "src1_raddr",
       "points": [
@@ -1791,7 +1791,7 @@
       "id": "w_dec_ra2",
       "from": "decoder.ra2_out",
       "to": "regfile.ra2",
-      "kind": "control",
+      "kind": "address",
       "signal": "state.instruction_fields.rs2",
       "label": "src2_raddr",
       "points": [
@@ -1827,7 +1827,7 @@
       "id": "w_dec_waddr",
       "from": "decoder.waddr_out",
       "to": "regfile.waddr",
-      "kind": "control",
+      "kind": "address",
       "signal": "state.writeback.reg_index",
       "label": "reg_waddr",
       "points": [
@@ -1845,7 +1845,7 @@
       "id": "w_imm_immadd",
       "from": "decoder.imm_out",
       "to": "pcimmadder.a_imm",
-      "kind": "data",
+      "kind": "imm",
       "signal": "state.immediate",
       "points": [
         [
@@ -1888,7 +1888,7 @@
       "id": "w_imm_muxa0",
       "from": "decoder.imm_out",
       "to": "muxa0.ma0_1",
-      "kind": "data",
+      "kind": "imm",
       "signal": "state.immediate",
       "label": "imm",
       "points": [
@@ -1975,7 +1975,7 @@
       "id": "w_imm_muxb",
       "from": "decoder.imm_out",
       "to": "muxb.mb_0",
-      "kind": "data",
+      "kind": "imm",
       "signal": "state.immediate",
       "label": "",
       "points": [
@@ -2019,7 +2019,7 @@
       "id": "w_alu_dmem",
       "from": "alu.f_out",
       "to": "dmem.a",
-      "kind": "data",
+      "kind": "address",
       "signal": "state.alu.result",
       "label": "F",
       "points": [
@@ -2041,7 +2041,7 @@
       "id": "w_alu_jalr",
       "from": "alu.f_out",
       "to": "jalrclean.in",
-      "kind": "data",
+      "kind": "address",
       "signal": "state.alu.result",
       "label": "F",
       "points": [
@@ -2067,7 +2067,7 @@
       "id": "w_jalr_m3",
       "from": "jalrclean.out",
       "to": "pcmux3.m3_1",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:alu_result_clean",
       "label": "&~1",
       "points": [
@@ -2576,7 +2576,7 @@
       "id": "w_m1_m6",
       "from": "pcmux1.m1_out",
       "to": "pcmux6.m6_0",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_next",
       "points": [
         [
@@ -2593,7 +2593,7 @@
       "id": "w_m6_m5",
       "from": "pcmux6.m6_out",
       "to": "pcmux5.m5_0",
-      "kind": "data",
+      "kind": "address",
       "signal": "derived:pc_next",
       "label": "",
       "points": [
@@ -2611,7 +2611,7 @@
       "id": "w_m5_pc",
       "from": "pcmux5.m5_out",
       "to": "PC.pc_next",
-      "kind": "data",
+      "kind": "address",
       "signal": "state.next_pc",
       "label": "pc_next",
       "points": [
@@ -2655,7 +2655,7 @@
       "id": "w_csr_irq",
       "from": "csr.irq_out",
       "to": "trapunit.irq_in",
-      "kind": "control",
+      "kind": "trap",
       "signal": "derived:csr_irq",
       "label": "",
       "points": [
@@ -2684,6 +2684,6 @@
   ],
   "_signals": "三个 PC-MUX 的 sel：pcmux3.sel=is_jalr, pcmux2.sel=jump|is_jalr, pcmux1.sel=branch|jump|is_jalr（后端 rv_core.cpp 的 PC 目标 if/else 链）。跨大半张图的同名信号（pc / pc+4）改用端口网络标签 net，不画长线。",
   "_signal_rules": "连线 signal 字段的取值口径：① 写成 state.xxx（对应后端 cycle_state 的字段路径）的，直接取后端值；② 写成 derived:xxx 的，后端没这个字段，前端从已有字段精确推导——pc_plus_4 = pc + 4；pc_imm = 分支/JAL 目标；pc_next = 本条指令最终写入 PC 的值；pcsel = branch||jump||is_jalr；jump_or_jalr = jump||is_jalr；alu_result_clean = alu.result & ~1（JALR）；csr_old = writeback.data 且 writeback.source=='CSR'；csr_irq = mtime>=mtimecmp 且 mie bit7(MTIE) 且 mstatus bit3(MIE)。③ signal 为 null 的表示这条线上是常量或全局时钟（clk/reset），不随后端状态变。注意图上的网络标签名 (net) 里 is_csr / is_mret / illegal / ecall / ebreak / csr_we / csr_addr 也都不在 control_signals_t 里（那个结构体只有 11 个字段），高亮时同样按推导口径处理：is_csr = writeback.source=='CSR'（rv_core.cpp:414）；ecall/ebreak/illegal = trap.taken 且 trap.cause 分别为 11/3/2（rv_core.cpp:381/385/273）；is_mret = instruction 整字 == 0x30200073（对齐 rv_disasm.cpp:192-197 的 funct3==0 && rd==0 && rs1==0 && inst>>20==0x302 四条判据，合起来就是整字相等。别用 0xFE007FFF 掩码，它清掉了 rs2 那几位，而 mret 的 rs2 恒为 2，会恒假）；csr_addr = instruction[31:20]；csr_we 镜像 rv_core.cpp:400-412 的 do_write 判据。",
-  "_wire_rules": "连线三条规则：① 每条线在末端（端口处）必须有箭头，方向 = 该线最后一段的走向；② 2 选 1 MUX 的两个数据输入 0/1 必须在同一条边上（输出边的对边），选择端只能占顶边或底边，且必须落在该边正中、与胶囊中心对称轴重合；③ 线色由信号性质决定：data=蓝实线（传输数值），control=灰虚线（判据/开关量：译码器输出、选择端、写使能、分支判据），clock=紫实线（clk / reset）。",
+  "_wire_rules": "连线三条规则：① 每条线在末端（端口处）必须有箭头，方向 = 该线最后一段的走向；② 2 选 1 MUX 的两个数据输入 0/1 必须在同一条边上（输出边的对边），选择端只能占顶边或底边，且必须落在该边正中、与胶囊中心对称轴重合；③ 线色由信号性质决定，共六类（色值见 frontend/src/data/datapathPalette.ts，那是唯一真相源）：data=蓝实线（传「值」：指令码、寄存器读出、ALU 结果写回），address=青实线（「位置编号」：PC、下一条 PC、跳转目标、访存地址、**寄存器号**），imm=绿实线（立即数与图上字面常量 4/0），control=灰虚线（「判据/开关量」：译码器输出、选择端、写使能、分支判据、ALU 操作码），clock=紫实线（clk / reset），trap=红实线（异常/中断）。判定口径只看这条线「传的东西是什么」：是位置编号就 address，是决定/开关就 control，两者都不是且是数值就 data。",
   "_todo": "尚未做：把 buildDatapathScene() 接进 Vue（components/datapath/DatapathView.vue），按 state 高亮激活的线与部件、并在线上浮当前值。signal 字段已补齐，是那一步的输入。"
 }

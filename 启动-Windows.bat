@@ -4,12 +4,12 @@ echo ==========================================
 echo   RV32I Single-Cycle Web Simulator
 echo   [WINDOWS] one-click launcher
 echo   (Linux users: use 启动-Linux.sh instead)
-echo   (need: g++ / Python3 / Node.js)
+echo   (need: g++ / Python3)
 echo ==========================================
 echo.
 REM ---- Step 1: build C++ core if missing ----
 if exist "backend\cpp\build\rv32i_sim.exe" goto :havecore
-echo  [1/3] Building C++ core ...
+echo  [1/2] Building C++ core ...
 mkdir "backend\cpp\build" 2>nul
 pushd "backend\cpp"
 g++ -std=c++17 -O2 -I src src/main.cpp src/rv_core.cpp src/rv_disasm.cpp -o build\rv32i_sim.exe
@@ -20,27 +20,23 @@ pause
 exit /b 1
 :havecore
 echo         done.
-REM ---- Step 2: npm install if missing ----
-if exist "frontend\node_modules\vite" goto :havenpm
-echo  [2/3] Installing frontend deps (first time may be slow)...
-pushd "frontend"
-call npm install
+REM ---- Step 2: launch the middleware (it also serves the web UI) ----
+REM The frontend is prebuilt into frontend\dist and served by the same
+REM middleware on port 8081, so no Node.js and no second window is needed.
+REM python runs with -B so that no __pycache__ is written into the folder.
+if not exist "frontend\dist\index.html" goto :nodist
+echo  [2/2] Launching server ...
+pushd "backend\python"
+echo.
+echo  Open in browser:  http://localhost:8081
+echo  (press Ctrl+C to stop)
+echo.
+python -B server.py
 popd
-if exist "frontend\node_modules\vite" goto :havenpm
-echo  NPM INSTALL FAILED. Please install Node.js and retry.
+exit /b 0
+
+:nodist
+echo  frontend\dist not found (frontend not built).
+echo    Developer: cd frontend ^&^& npm install ^&^& npm run build
 pause
 exit /b 1
-:havenpm
-echo         done.
-REM ---- Step 3: launch servers in two windows ----
-echo  [3/3] Launching servers...
-pushd "backend\python"
-start "RV32I-backend" cmd /k "python server.py"
-popd
-pushd "frontend"
-start "RV32I-frontend" cmd /k "npm run dev"
-popd
-echo.
-echo  Two windows opened. Open in browser:  http://localhost:5173
-echo.
-pause

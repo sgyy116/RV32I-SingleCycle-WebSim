@@ -1,11 +1,25 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useSimulatorStore } from '@/stores/simulator'
 
 const sim = useSimulatorStore()
+const footerEl = ref<HTMLElement | null>(null)
+let heightObserver: ResizeObserver | null = null
+onMounted(() => {
+  const updateHeight = () => {
+    if (footerEl.value) document.documentElement.style.setProperty('--rv-footer-h', `${footerEl.value.getBoundingClientRect().height}px`)
+  }
+  updateHeight()
+  heightObserver = new ResizeObserver(updateHeight)
+  if (footerEl.value) heightObserver.observe(footerEl.value)
+})
+onUnmounted(() => heightObserver?.disconnect())
 </script>
 
 <template>
-  <footer class="app-footer shrink-0 flex items-center gap-4 px-4 text-sm bg-slate-900 text-slate-300 border-t border-slate-700">
+  <!-- 高度走 CSS 变量，与 AppHeader / GlossaryOverlay 同源；底色保持深色，
+       与改浅后的顶栏形成「顶栏=操作区、底栏=状态区」的层次 -->
+  <footer ref="footerEl" class="app-footer shrink-0 flex items-center gap-4 px-4 text-sm bg-slate-900 text-slate-300 border-t border-slate-600">
     <div class="footer-connection flex items-center gap-1.5">
       <span class="w-2 h-2 rounded-full" :class="sim.connected ? 'bg-green-500' : 'bg-red-500'"></span>
       <span>{{ sim.connected ? '后端已连接' : '后端未连接' }}</span>
@@ -22,20 +36,9 @@ const sim = useSimulatorStore()
 </template>
 
 <style scoped>
-.app-footer {
-  min-height: 40px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  box-sizing: border-box;
-  overflow-x: auto;
-  white-space: nowrap;
-}
+.app-footer { min-height: calc(40px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; overflow-x: auto; white-space: nowrap; }
 @media (max-width: 750px) {
-  .app-footer {
-    flex-wrap: wrap;
-    gap: 2px 12px;
-    padding: 6px 12px env(safe-area-inset-bottom, 0px);
-    white-space: normal;
-  }
+  .app-footer { flex-wrap: wrap; gap: 2px 12px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px)); white-space: normal; }
   .footer-spacer { display: none; }
   .footer-connection, .footer-status { flex-wrap: wrap; gap: 2px 12px; }
 }

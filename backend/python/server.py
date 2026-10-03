@@ -17,8 +17,14 @@
 import asyncio
 import json
 import logging
+import sys
 import tempfile
 import uuid
+
+# 不写 __pycache__：交付包被反复启动、关闭之后，目录里不会多出任何文件。
+# 启动器已经用 python -B，这里再兜一层——测试脚本会直接 spawn 本文件，
+# 不经过启动器。必须写在下面那些本地模块 import 之前才起作用。
+sys.dont_write_bytecode = True
 
 import websockets
 

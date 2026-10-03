@@ -101,3 +101,15 @@ loop:
 `,
   },
 ]
+
+/**
+ * 示例下拉框的选项表。顶栏和代码编辑器各有一个选择器，都绑 editor.currentExample，
+ * 所以选项表只在这里定义一次，避免两处各写一份、改一边忘一边。
+ *
+ * 末尾的「自定义」值是哨兵 -1：选中它等于清空编辑器，让用户自己写
+ * （store 的 loadExample 认这个值，见 stores/editor.ts）。
+ */
+export const EXAMPLE_OPTIONS = [
+  ...EXAMPLES.map((e, i) => ({ label: e.name, value: i })),
+  { label: '自定义', value: -1 },
+]

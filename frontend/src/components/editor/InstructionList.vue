@@ -1,14 +1,49 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useSimulatorStore } from '@/stores/simulator'
 
 const sim = useSimulatorStore()
-const listEl = ref<HTMLElement | null>(null)
-const scrollTop = ref(0)
-const scrollMax = ref(0)
 
 // 当前执行到的 PC（高亮）
 const currentPc = computed(() => sim.cycleState?.pc ?? null)
+
+// 自动跟随：程序跑过 20 条以后，高亮行会滚出可视区，用户得自己找。
+// 这里在 PC 变化后把高亮行带回视野。
+const listEl = ref<HTMLDivElement | null>(null)
+const scrollTop = ref(0)
+const scrollMax = ref(0)
+let sizeObserver: ResizeObserver | null = null
+
+function updateScroll() {
+  if (!listEl.value) return
+  scrollTop.value = listEl.value.scrollTop
+  scrollMax.value = Math.max(0, listEl.value.scrollHeight - listEl.value.clientHeight)
+}
+
+function onSlider(event: Event) {
+  if (listEl.value) listEl.value.scrollTop = Number((event.target as HTMLInputElement).value)
+  updateScroll()
+}
+
+onMounted(() => {
+  sizeObserver = new ResizeObserver(updateScroll)
+  if (listEl.value) sizeObserver.observe(listEl.value)
+  nextTick(updateScroll)
+})
+onUnmounted(() => sizeObserver?.disconnect())
+watch(() => sim.disassembly.length, () => nextTick(updateScroll))
+
+// 用 data-pc 直接查那一行，而不是维护一份元素数组：disassembly 换了程序以后
+// 行的数量会变，数组里会留下已经卸载的旧元素，查 DOM 则永远是当前这一份。
+watch(currentPc, async (pc) => {
+  if (!pc) return
+  await nextTick()
+  const row = listEl.value?.querySelector<HTMLElement>(`tr[data-pc="${pc}"]`)
+  // block:'nearest' —— 行已经在视野里就一动不动，只有滚出可视区才带动。
+  // 这样手动拖着看代码时不会被每一步都拽回去。
+  row?.scrollIntoView({ block: 'nearest' })
+  updateScroll()
+})
 
 // 断点标记
 function isBreakpoint(pc: string): boolean {
@@ -18,28 +53,6 @@ function isBreakpoint(pc: string): boolean {
 function toggleBp(pc: string) {
   sim.toggleBreakpoint(pc)
 }
-
-function updateScroll() {
-  const el = listEl.value
-  if (!el) return
-  scrollTop.value = el.scrollTop
-  scrollMax.value = Math.max(0, el.scrollHeight - el.clientHeight)
-}
-
-function onSlider(event: Event) {
-  const value = Number((event.target as HTMLInputElement).value)
-  scrollTop.value = value
-  if (listEl.value) listEl.value.scrollTop = value
-}
-
-function onWheel(event: WheelEvent) {
-  if (!listEl.value || !scrollMax.value) return
-  event.preventDefault()
-  listEl.value.scrollTop = Math.max(0, Math.min(scrollMax.value, listEl.value.scrollTop + event.deltaY))
-}
-
-onMounted(() => nextTick(updateScroll))
-watch(() => sim.disassembly.length, () => nextTick(updateScroll))
 </script>
 
 <template>
@@ -48,12 +61,13 @@ watch(() => sim.disassembly.length, () => nextTick(updateScroll))
       <span>指令列表（反汇编）</span>
       <span class="text-slate-400 font-normal">{{ sim.disassembly.length }} 条</span>
     </div>
-    <div ref="listEl" class="flex-1 overflow-y-auto" @scroll="updateScroll" @wheel="onWheel">
+    <div ref="listEl" class="flex-1 min-h-0 overflow-y-auto" @scroll="updateScroll">
       <table class="w-full text-xs font-mono">
         <tbody>
           <tr
             v-for="(ins, i) in sim.disassembly"
             :key="i"
+            :data-pc="ins.pc"
             class="border-b border-slate-100"
             :class="currentPc === ins.pc ? 'bg-blue-100' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50'"
           >
@@ -73,16 +87,8 @@ watch(() => sim.disassembly.length, () => nextTick(updateScroll))
       </table>
     </div>
     <div class="px-3 py-2 border-t border-slate-200 bg-slate-50">
-      <input
-        class="w-full accent-blue-600"
-        type="range"
-        min="0"
-        :max="scrollMax"
-        :value="scrollTop"
-        :disabled="scrollMax === 0"
-        aria-label="指令列表滚动位置"
-        @input="onSlider"
-      />
+      <input class="w-full accent-blue-600" type="range" min="0" :max="scrollMax"
+        :value="scrollTop" :disabled="scrollMax === 0" aria-label="指令列表滚动位置" @input="onSlider" />
     </div>
   </div>
 </template>

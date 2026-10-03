@@ -7,3 +7,11 @@ backend/test/*.bin
 tools/out/
 *.pyc
 *.tsbuildinfo
+
+# 测试、构建与本机环境文件
+**/__pycache__/
+backend/compile_output/
+*.bin
+.env
+.env.*
+*.log

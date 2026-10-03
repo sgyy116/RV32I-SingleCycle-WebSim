@@ -4,78 +4,72 @@
 
 :root {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  /* 顶栏 / 底栏高度。GlossaryOverlay 的定位依赖它们，
+     改这里就不用再去那个组件里追硬编码的 top-14 / bottom-8。 */
+  --rv-header-h: 3.5rem;
+  --rv-footer-h: calc(40px + env(safe-area-inset-bottom, 0px));
 }
 
 html,
-body,
-#app {
+body {
   height: 100%;
   margin: 0;
   overflow: hidden;
   background: #f1f5f9;
 }
 
-/* 数据通路画布 */
-.datapath-svg text {
+/* 高度链的根。
+   注意：App.vue 里的 <n-config-provider> 必须带 abstract。它默认会渲染一个
+   不带 height 的包裹 div，夹在 #app 和根 div 之间，使下面所有 h-full 的
+   百分比高度退化成 auto —— 整个界面就按内容撑高，图区宽度一变窄，界面跟着
+   缩成一小块，剩余全是空白。删掉 abstract 就会退回那个状态。
+   dvh 那一行是给移动端地址栏用的：地址栏收起/展开时 100% 会和可视高度对不上。 */
+#app {
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* naive-ui 的 tabs 默认滚不动。
+   .n-tabs 自己是 display:flex/flex-direction:column，但它的子元素
+   .n-tabs-pane-wrapper 只有 position:relative + overflow:hidden，
+   既不是 flex 项也不 flex-grow，高度永远等于内容高 —— 于是写在 pane 上的
+   flex-1 / min-h-0 / overflow-y-auto 全部失效，面板只会把整页撑高。
+   把 wrapper 接进 flex 链、让 pane 填满它，内部滚动才真的成立。
+   （按 naive-ui/es/tabs/src/styles/index.cssr.mjs 的实际结构写的选择器：
+     .n-tabs-nav 与 .n-tabs-pane-wrapper 都是 .n-tabs 的直接子元素。） */
+.n-tabs > .n-tabs-pane-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.n-tabs > .n-tabs-pane-wrapper > .n-tab-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* 压过 naive 的 .n-tabs--top .n-tab-pane 内边距 */
+  padding: 0;
+}
+
+/* tab 栏尾部那个插槽里只放一个折叠按钮，naive 却给它留了 16px 左内边距。
+   收到 4px。多写两级选择器（.n-tabs > .n-tabs-nav > …）是为了压过 naive 的
+   单类选择器，不靠样式表顺序决胜 —— naive 的样式是运行时注入的，顺序不可控。
+   （标签之间的 36px 间距不走这里，那个用 App.vue 的 themeOverrides 改。） */
+.n-tabs > .n-tabs-nav > .n-tabs-nav__suffix {
+  padding-left: 4px;
+}
+
+.panel-content-concealed {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.dp-svg, .dp-svg * {
+  -webkit-user-select: none;
   user-select: none;
-}
-
-/* 活跃连线流动动画 */
-.active-wire {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.active-wire.data {
-  stroke: #3b82f6;
-  stroke-width: 3;
-  stroke-dasharray: 8 6;
-  animation: dash-march 0.6s linear infinite;
-}
-.active-wire.address {
-  stroke: #22c55e;
-  stroke-width: 2.5;
-  stroke-dasharray: 6 5;
-  animation: dash-march 0.8s linear infinite;
-}
-.active-wire.control {
-  stroke: #94a3b8;
-  stroke-width: 2;
-  stroke-dasharray: 4 5;
-  animation: dash-march 0.5s linear infinite;
-}
-.active-wire.alu {
-  stroke: #f97316;
-  stroke-width: 3;
-  stroke-dasharray: 8 6;
-  animation: dash-march 0.6s linear infinite;
-}
-
-@keyframes dash-march {
-  to {
-    stroke-dashoffset: -28;
-  }
-}
-
-/* 模块活跃发光 */
-.module-active {
-  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7));
-}
-.module-hovered {
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.9));
-}
-
-/* 值闪烁动画 */
-@keyframes value-flash {
-  0% {
-    fill: #f59e0b;
-  }
-  100% {
-    fill: #0f172a;
-  }
-}
-.value-flash {
-  animation: value-flash 0.6s ease-out;
 }
 
 /* 自定义滚动条 */

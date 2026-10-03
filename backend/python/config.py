@@ -3,18 +3,25 @@
 # ============================================================================
 
 import os
+import tempfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()   # rv32i-single-cycle
 BACKEND_DIR = Path(__file__).parent.parent.resolve()            # backend
 CPP_BUILD_DIR = BACKEND_DIR / "cpp" / "build"
-COMPILE_OUTPUT_DIR = BACKEND_DIR / "compile_output"
+
+# 前端预构建静态文件（交付包内置；由 compile_server 一并托管，见其 build_app）
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
+
+# 编译输出（临时 ELF/bin）放系统临时目录，不落在源码树里——
+# 交付包被反复使用也不会因此产生任何新文件。
+COMPILE_OUTPUT_DIR = Path(tempfile.gettempdir()) / "rv32i-compile"
 
 # 端口
 WEBSOCKET_PORT = int(os.environ.get("WS_PORT", 8080))
 COMPILE_PORT = int(os.environ.get("COMPILE_PORT", 8081))
 
-# 模拟器可执行文件路径（按平台选择；build 里可能残留旧的 Linux 版 rv32i_sim）
+# 模拟器可执行文件路径（按平台选择；build 里可能残留旧版的 Linux 可执行文件）
 SIM_PATH = os.environ.get("RV32I_SIM_PATH")
 if SIM_PATH is None:
     exe_name = "rv32i_sim.exe" if os.name == "nt" else "rv32i_sim"
@@ -29,5 +36,5 @@ RISCV_LD = os.environ.get("RISCV_LD", "riscv-none-elf-ld")
 ARCH = "rv32i"
 ABI = "ilp32"
 
-# 编译输出目录（临时 ELF）
-COMPILE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+# 注：输出目录刻意不在这里创建。写在本模块顶层会让「import config」本身
+# 就产生文件系统副作用；改由 compile_source 在真正要写文件时按需 mkdir。

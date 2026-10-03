@@ -11,6 +11,7 @@
 # ============================================================================
 
 import asyncio
+import logging
 import os
 import re
 import subprocess
@@ -21,6 +22,8 @@ from aiohttp import web
 
 import config
 import asm
+
+log = logging.getLogger("compile_server")
 
 # 链接脚本：.text 起始 0x80000000
 LINKER_SCRIPT = r"""
@@ -154,9 +157,36 @@ async def cors_middleware(request: web.Request, handler):
     return response
 
 
+async def handle_index(request: web.Request) -> web.Response:
+    """GET / —— 单页应用的 HTML 入口（静态托管模式）"""
+    index = config.FRONTEND_DIST / "index.html"
+    if not index.is_file():
+        raise web.HTTPNotFound()
+    return web.FileResponse(index)
+
+
 def build_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
+
+    # 编译 API 与静态前端同源（都在本服务上），前端才可以用相对路径
+    # '/api/compile' 请求。放最前注册，老版本 aiohttp 上也能靠顺序保命。
     app.router.add_post("/api/compile", handle_compile)
+
+    # 前端预构建产物（frontend/dist）由本服务一并托管：交付形态只要一个进程、
+    # 一个端口，用户不必安装 Node。dist 不存在时（纯开发模式，只跑 vite）静默
+    # 跳过——aiohttp 的 add_static 对不存在的目录会直接抛 ValueError，所以必须
+    # 先判断存在性，否则连编译 API 都起不来。
+    if config.FRONTEND_DIST.is_dir():
+        # 顺序是硬约束：`GET /` 必须先于 add_static 注册。二者都落在路由索引的
+        # "/" 键下，候选按注册顺序线性尝试；若静态资源在前，它会先接管 "/" 并
+        # 抛 403——aiohttp 的静态处理器对目录请求不会回退到 index.html
+        # （show_index=False 时直接 raise HTTPForbidden），首页就成了 403。
+        app.router.add_get("/", handle_index)
+        app.router.add_static("/", config.FRONTEND_DIST, show_index=False)
+        log.info("前端静态文件已挂载: %s", config.FRONTEND_DIST)
+    else:
+        log.info("未找到前端构建产物(%s)，仅提供编译 API", config.FRONTEND_DIST)
+
     return app
 
 
