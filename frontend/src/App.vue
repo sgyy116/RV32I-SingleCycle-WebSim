@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { NConfigProvider, zhCN, NTabs, NTabPane } from 'naive-ui'
 import type { GlobalThemeOverrides } from 'naive-ui'
 import { PanelRightClose, PanelRightOpen } from 'lucide-vue-next'
@@ -12,8 +13,46 @@ import InstructionPanel from '@/components/panels/InstructionPanel.vue'
 import WaveformPanel from '@/components/panels/WaveformPanel.vue'
 import GlossaryOverlay from '@/components/glossary/GlossaryOverlay.vue'
 import { useLayoutStore } from '@/stores/layout'
+import { resolveWorkspaceMode, type WorkspacePanel } from '@/utils/workspaceLayout'
 
 const layout = useLayoutStore()
+const viewportEl = ref<HTMLElement | null>(null)
+const scrollEl = ref<HTMLElement | null>(null)
+const panels: { key: WorkspacePanel; label: string }[] = [
+  { key: 'datapath', label: '数据通路' },
+  { key: 'editor', label: '汇编代码' },
+  { key: 'state', label: '运行状态' },
+]
+let sizeObserver: ResizeObserver | null = null
+let resizeFrame = 0
+function updateWorkspace() {
+  if (!viewportEl.value) return
+  // 测外层宽度，内部出现滚动条不会反过来改变布局判据。
+  const next = resolveWorkspaceMode(viewportEl.value.getBoundingClientRect().width, layout.mode)
+  if (next === 'single' && layout.mode !== 'single') {
+    // 正在编辑或查看状态时拖窄窗口，继续显示用户正在操作的工作区。
+    const focused = document.activeElement
+    if (focused?.closest('#workspace-editor')) layout.activePanel = 'editor'
+    else if (focused?.closest('#workspace-state')) layout.activePanel = 'state'
+  }
+  layout.mode = next
+}
+onMounted(() => {
+  updateWorkspace()
+  sizeObserver = new ResizeObserver(() => {
+    cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(updateWorkspace)
+  })
+  if (viewportEl.value) sizeObserver.observe(viewportEl.value)
+})
+onUnmounted(() => {
+  sizeObserver?.disconnect()
+  cancelAnimationFrame(resizeFrame)
+})
+watch(() => [layout.mode, layout.activePanel], async () => {
+  await nextTick()
+  scrollEl.value?.scrollTo({ top: 0 })
+})
 
 /** naive 的全局主题覆盖。
  *  Tabs 的标签间距默认是 36px（naive 的 tabGapSmallLine），四个标签光间隙就
@@ -44,66 +83,84 @@ const themeOverrides: GlobalThemeOverrides = {
       <!-- 顶部控制栏 -->
       <AppHeader />
 
-      <div class="flex-1 min-h-0 flex overflow-hidden">
-        <!-- 左侧：代码编辑器 + 指令列表 -->
-        <AppSidebar />
+      <nav v-show="layout.mode === 'single'" class="workspace-navigation" aria-label="工作区视图">
+        <button v-for="panel in panels" :key="panel.key" type="button"
+          :aria-pressed="layout.activePanel === panel.key" :aria-controls="`workspace-${panel.key}`"
+          @click="layout.activePanel = panel.key">{{ panel.label }}</button>
+      </nav>
 
-        <!-- 中央：数据通路可视化 -->
-        <main class="flex-1 relative min-w-0 min-h-0 overflow-hidden">
-          <DatapathView />
-        </main>
+      <div ref="viewportEl" class="workspace-viewport flex-1 min-h-0">
+        <div ref="scrollEl" class="workspace-scroll">
+          <div class="workspace-grid" :class="[`is-${layout.mode}`, { 'left-collapsed': layout.leftConcealed, 'right-collapsed': layout.rightConcealed }]">
+            <!-- 左侧：代码编辑器 + 指令列表 -->
+            <AppSidebar id="workspace-editor" class="workspace-editor"
+              :class="{ 'workspace-hidden': layout.mode === 'single' && layout.activePanel !== 'editor' }"
+              :inert="layout.mode === 'single' && layout.activePanel !== 'editor'"
+              :aria-hidden="layout.mode === 'single' && layout.activePanel !== 'editor'" />
 
-        <!-- 右侧：指令信号 / 寄存器 / 内存 / 波形。
-             折叠逻辑与左侧同源，见 AppSidebar.vue 的注释。 -->
-        <aside
-          class="relative shrink-0 flex flex-col min-h-0 transition-[width] duration-200"
-          :class="layout.rightCollapsed ? 'w-0' : 'w-[clamp(240px,22vw,340px)] border-l border-slate-200 bg-white overflow-hidden'"
-        >
-          <template v-if="layout.rightCollapsed">
-            <button
-              type="button"
-              class="panel-expand panel-expand-right"
-              title="展开右侧面板"
-              aria-label="展开右侧面板"
-              aria-controls="right-panel-content"
-              :aria-expanded="false"
-              @click="layout.toggleRight()"
+            <!-- 中央：数据通路可视化 -->
+            <main id="workspace-datapath" class="workspace-datapath relative min-w-0 min-h-0 overflow-hidden"
+              :class="{ 'workspace-hidden': layout.mode === 'single' && layout.activePanel !== 'datapath' }"
+              :inert="layout.mode === 'single' && layout.activePanel !== 'datapath'"
+              :aria-hidden="layout.mode === 'single' && layout.activePanel !== 'datapath'">
+              <DatapathView />
+            </main>
+
+            <!-- 右侧：指令信号 / 寄存器 / 内存 / 波形。
+                 折叠逻辑与左侧同源，见 AppSidebar.vue 的注释。 -->
+            <aside
+              id="workspace-state" class="workspace-state relative flex flex-col min-h-0 min-w-0"
+              :class="[layout.rightConcealed ? '' : 'border-l border-slate-200 bg-white overflow-hidden', { 'workspace-hidden': layout.mode === 'single' && layout.activePanel !== 'state' }]"
+              :inert="layout.mode === 'single' && layout.activePanel !== 'state'"
+              :aria-hidden="layout.mode === 'single' && layout.activePanel !== 'state'"
             >
-              <PanelRightOpen :size="16" />
-            </button>
-          </template>
+              <template v-if="layout.rightConcealed">
+                <button
+                  type="button"
+                  class="panel-expand panel-expand-right"
+                  title="展开右侧面板"
+                  aria-label="展开右侧面板"
+                  aria-controls="right-panel-content"
+                  :aria-expanded="false"
+                  @click="layout.toggleRight()"
+                >
+                  <PanelRightOpen :size="16" />
+                </button>
+              </template>
 
-          <n-tabs id="right-panel-content" type="line" size="small" justify-content="space-between" animated class="flex-1 min-h-0 flex flex-col"
-            :class="{ 'panel-content-concealed': layout.rightCollapsed }"
-            :aria-hidden="layout.rightCollapsed" :inert="layout.rightCollapsed">
-            <template #prefix>
-              <button
-                type="button"
-                class="ml-1 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-800"
-                title="收起右侧面板"
-                @click="layout.toggleRight()"
-              >
-                <PanelRightClose :size="15" />
-              </button>
-            </template>
+              <n-tabs id="right-panel-content" type="line" size="small" justify-content="space-between" animated class="flex-1 min-h-0 flex flex-col"
+                :class="{ 'panel-content-concealed': layout.rightConcealed }"
+                :aria-hidden="layout.rightConcealed" :inert="layout.rightConcealed">
+                <template v-if="layout.mode === 'wide'" #prefix>
+                  <button
+                    type="button"
+                    class="ml-1 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+                    title="收起右侧面板"
+                    @click="layout.toggleRight()"
+                  >
+                    <PanelRightClose :size="15" />
+                  </button>
+                </template>
 
-            <!-- 各 pane 一律保持 overflow-y-auto：RegFilePanel 的 NDataTable 写死
-                 :max-height="300"、WaveformPanel 的冻结列依赖 overflow-x-auto 当
-                 最近滚动容器，改成 hidden 会让内容被裁且滚不动。 -->
-            <n-tab-pane name="signal" tab="指令信号" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
-              <InstructionPanel />
-            </n-tab-pane>
-            <n-tab-pane name="reg" tab="寄存器" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
-              <RegFilePanel />
-            </n-tab-pane>
-            <n-tab-pane name="mem" tab="内存" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
-              <MemoryView />
-            </n-tab-pane>
-            <n-tab-pane name="wave" tab="波形" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
-              <WaveformPanel />
-            </n-tab-pane>
-          </n-tabs>
-        </aside>
+                <!-- 各 pane 一律保持 overflow-y-auto：RegFilePanel 的 NDataTable 写死
+                     :max-height="300"、WaveformPanel 的冻结列依赖 overflow-x-auto 当
+                     最近滚动容器，改成 hidden 会让内容被裁且滚不动。 -->
+                <n-tab-pane name="signal" tab="指令信号" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
+                  <InstructionPanel />
+                </n-tab-pane>
+                <n-tab-pane name="reg" tab="寄存器" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
+                  <RegFilePanel />
+                </n-tab-pane>
+                <n-tab-pane name="mem" tab="内存" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
+                  <MemoryView />
+                </n-tab-pane>
+                <n-tab-pane name="wave" tab="波形" display-directive="show" class="flex-1 min-h-0 overflow-y-auto">
+                  <WaveformPanel />
+                </n-tab-pane>
+              </n-tabs>
+            </aside>
+          </div>
+        </div>
       </div>
 
       <!-- 底部状态栏 -->

@@ -1,12 +1,12 @@
 // ============================================================================
-// layout.ts —— 三栏主布局的折叠状态（Pinia）
+// layout.ts —— 工作区重排、视图选择和宽屏折叠状态（Pinia）
 //
 // 为什么必须是 store、不能放 App.vue 的 ref：左栏的折叠按钮长在 AppSidebar 里，
 // 而左栏 <aside> 元素本身写在 App.vue 里——两者是**兄弟**，够不到对方的 ref。
 // （同一个理由见 glossary.ts 开头的说明。）
 //
-// 左栏 380px + 右栏 340px = 720px 是写死的，窗口一窄就把中间的数据通路图压成
-// 一条缝。折叠是最省事又最直观的解法：宽度仍是固定值，只是多一个开/关。
+// 宽屏三栏、较窄窗口上下两层、窄屏单列。布局模式不写入持久化偏好，
+// 浏览器窗口与缩放后的有效宽度决定模式；宽屏折叠偏好继续独立保留。
 //
 // 折叠的形态约束：**不能**用 display:none / v-show。CodeMirror 在 display:none
 // 的容器里量到的高度是 0，再展开时可能整片白。当前收起时用 visibility 和
@@ -14,7 +14,8 @@
 // ============================================================================
 
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { resolveWorkspaceMode, type WorkspaceMode, type WorkspacePanel } from '@/utils/workspaceLayout'
 
 const LEFT_KEY = 'rv32i.layout.leftCollapsed'
 const RIGHT_KEY = 'rv32i.layout.rightCollapsed'
@@ -49,8 +50,14 @@ function initial(pref: boolean | null): boolean {
 }
 
 export const useLayoutStore = defineStore('layout', () => {
+  const mode = ref<WorkspaceMode>(resolveWorkspaceMode(window.innerWidth))
+  const activePanel = ref<WorkspacePanel>('datapath')
   const leftCollapsed = ref(initial(read(LEFT_KEY)))
   const rightCollapsed = ref(initial(read(RIGHT_KEY)))
+  // 折叠偏好只用于宽屏；上下布局始终提供两个面板，单列布局按当前视图展示。
+  const leftConcealed = computed(() => mode.value === 'wide' && leftCollapsed.value)
+  const rightConcealed = computed(() => mode.value === 'wide' && rightCollapsed.value)
+  const editorVisible = computed(() => !leftConcealed.value && (mode.value !== 'single' || activePanel.value === 'editor'))
 
   // 只要用户动过一次，之后就一直按他选的来，不再看窗口宽度
   watch(leftCollapsed, (v) => write(LEFT_KEY, v))
@@ -63,5 +70,5 @@ export const useLayoutStore = defineStore('layout', () => {
     rightCollapsed.value = !rightCollapsed.value
   }
 
-  return { leftCollapsed, rightCollapsed, toggleLeft, toggleRight }
+  return { mode, activePanel, leftConcealed, rightConcealed, editorVisible, leftCollapsed, rightCollapsed, toggleLeft, toggleRight }
 })

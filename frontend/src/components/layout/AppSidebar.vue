@@ -14,10 +14,10 @@ const layout = useLayoutStore()
     展开态宽度用 clamp：窄屏自动收窄，不必等用户去点折叠。
   -->
   <aside
-    class="relative shrink-0 flex flex-col min-h-0 transition-[width] duration-200"
-    :class="layout.leftCollapsed ? 'w-0' : 'w-[clamp(240px,26vw,380px)] border-r border-slate-200 bg-white overflow-hidden'"
+    class="relative flex flex-col min-h-0 min-w-0"
+    :class="layout.leftConcealed ? '' : 'border-r border-slate-200 bg-white overflow-hidden'"
   >
-    <template v-if="layout.leftCollapsed">
+    <template v-if="layout.leftConcealed">
       <button
         type="button"
         class="panel-expand panel-expand-left"
@@ -32,10 +32,10 @@ const layout = useLayoutStore()
     </template>
 
     <n-tabs id="left-panel-content" type="line" animated size="small" justify-content="space-between" class="flex-1 min-h-0 flex flex-col"
-      :class="{ 'panel-content-concealed': layout.leftCollapsed }"
-      :aria-hidden="layout.leftCollapsed" :inert="layout.leftCollapsed">
+      :class="{ 'panel-content-concealed': layout.leftConcealed }"
+      :aria-hidden="layout.leftConcealed" :inert="layout.leftConcealed">
       <!-- 折叠按钮挂在 tab 栏右端（naive 的 suffix 插槽），省掉单独一整行标题栏 -->
-      <template #suffix>
+      <template v-if="layout.mode === 'wide'" #suffix>
         <button
           type="button"
           class="mr-1 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-800"

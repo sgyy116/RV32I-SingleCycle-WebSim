@@ -31,6 +31,51 @@ body {
   overflow: hidden;
 }
 
+/* 试验布局：视口大小变化只调整容器，同一份组件持续挂载。 */
+.workspace-viewport { min-width: 0; overflow: hidden; }
+.workspace-scroll { height: 100%; overflow: auto; overscroll-behavior: contain; }
+.workspace-grid {
+  --editor-width: clamp(240px, 26vw, 380px);
+  --state-width: clamp(240px, 22vw, 340px);
+  display: grid;
+  height: 100%;
+  min-width: 0;
+  grid-template-columns: var(--editor-width) minmax(0, 1fr) var(--state-width);
+  grid-template-rows: minmax(0, 1fr);
+}
+.workspace-grid.left-collapsed { --editor-width: 0px; }
+.workspace-grid.right-collapsed { --state-width: 0px; }
+.workspace-editor { grid-column: 1; grid-row: 1; }
+.workspace-datapath { grid-column: 2; grid-row: 1; }
+.workspace-state { grid-column: 3; grid-row: 1; }
+.workspace-grid.is-stacked {
+  --datapath-row: clamp(300px, 54vh, 640px);
+  height: max(100%, calc(var(--datapath-row) + 336px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: var(--datapath-row) minmax(300px, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+.is-stacked > .workspace-datapath { grid-column: 1 / -1; grid-row: 1; }
+.is-stacked > .workspace-editor { grid-column: 1; grid-row: 2; }
+.is-stacked > .workspace-state { grid-column: 2; grid-row: 2; }
+.workspace-grid.is-single {
+  height: max(100%, 384px);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  padding: 12px;
+}
+.is-single > .workspace-editor, .is-single > .workspace-datapath, .is-single > .workspace-state {
+  grid-column: 1;
+  grid-row: 1;
+}
+.workspace-grid:not(.is-wide) > * { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.workspace-hidden { visibility: hidden; pointer-events: none; }
+.workspace-navigation { flex-shrink: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 8px 12px 0; }
+.workspace-navigation button { min-height: 40px; min-width: 0; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #475569; font-weight: 700; font-size: 13px; }
+.workspace-navigation button[aria-pressed="true"] { border-color: #93c5fd; background: #dbeafe; color: #1d4ed8; }
+.workspace-navigation button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
 /* naive-ui 的 tabs 默认滚不动。
    .n-tabs 自己是 display:flex/flex-direction:column，但它的子元素
    .n-tabs-pane-wrapper 只有 position:relative + overflow:hidden，
