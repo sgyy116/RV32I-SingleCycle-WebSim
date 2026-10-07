@@ -1,6 +1,7 @@
 :root {
   --dp-hl-module: #2563eb;
   --dp-hl-trap: #dc2626;
+  --dp-flow-period: 0.6s;
 }
 
 /* ============================================================================
@@ -22,10 +23,10 @@
 
 /* ---- 通电的连线 ----
    这些类直接落在 path 元素上，CSS 的 stroke-width 能压过元素自己的呈现属性。 */
-.dp-svg .dp-lit {
+.dp-svg path.dp-lit {
   stroke-width: 2.5;
   stroke-dasharray: 16 10;
-  animation: dp-flow 0.6s linear infinite;
+  animation: dp-flow var(--dp-flow-period) linear infinite;
 }
 
 /* 激活态统一为流动虚线，信号类别由六类颜色区分。 */
@@ -35,23 +36,18 @@
 
 /* ---- 本波新生的连线：流动虚线 ----
    逐波播放时，这一波刚通电的那几根线走虚线，并且虚线不间断地向前跑，
-   让「信号正沿着这根线传过去」看得出来。其余已亮的老线保持实线，形成对比。
-
-   必须写在 .dp-lit 之后并叠一个类名：.dp-lit 里那条 stroke-dasharray:none
-   权重是（0,2,0），同权重下后写的赢，但这里干脆提到（0,3,0）更保险。
+   让「信号正沿着这根线传过去」看得出来。既有激活线也保持同样的流动样式。
+   只作用于路径，不让分组的描边或动画继承给部件框、文字和箭头。
 
    位移量 26 = 16 + 10，正好一个周期，循环时接缝看不出来。offset 由大变小，
    虚线沿路径方向前进，也就是从源部件流向目的部件。 */
-.dp-svg .dp-lit.dp-fresh {
+.dp-svg path.dp-lit.dp-fresh {
   stroke-dasharray: 16 10;
-  animation: dp-flow 0.6s linear infinite;
+  animation: dp-flow var(--dp-flow-period) linear infinite;
 }
 @keyframes dp-flow {
   from { stroke-dashoffset: 26; }
   to   { stroke-dashoffset: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dp-svg .dp-lit.dp-fresh { animation: none; }
 }
 
 /* ---- 通电的部件 ----
@@ -62,9 +58,23 @@
 .dp-svg g.module.dp-lit > *:first-child {
   stroke: var(--dp-hl-module);
   stroke-width: 2.5;
+  stroke-dasharray: none;
+  animation: none;
 }
 .dp-svg g.module.dp-trap-lit > *:first-child {
   stroke: var(--dp-hl-trap);
+}
+
+/* 实际参与传输的出入口，与线路虚线共用周期；低亮时也保留位置可辨。 */
+.dp-svg .dp-port { opacity: 0; fill: var(--dp-hl-module); stroke: #fff; stroke-width: 1.5; }
+.dp-svg .dp-port-active { opacity: 1; animation: dp-port-pulse var(--dp-flow-period) linear infinite; }
+.dp-svg .dp-port-trap { fill: var(--dp-hl-trap); }
+@keyframes dp-port-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-svg path.dp-lit, .dp-svg path.dp-lit.dp-fresh, .dp-svg .dp-port-active { animation: none; }
 }
 
 /* ---- 通电的网络标签：方框与文字一起由虚线变实线 ---- */

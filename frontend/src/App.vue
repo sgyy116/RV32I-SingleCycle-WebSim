@@ -56,21 +56,21 @@ const themeOverrides: GlobalThemeOverrides = {
         <!-- 右侧：指令信号 / 寄存器 / 内存 / 波形。
              折叠逻辑与左侧同源，见 AppSidebar.vue 的注释。 -->
         <aside
-          class="relative shrink-0 border-l border-slate-200 bg-white flex flex-col min-h-0 overflow-hidden transition-[width] duration-200"
-          :class="layout.rightCollapsed ? 'w-10' : 'w-[clamp(240px,22vw,340px)]'"
+          class="relative shrink-0 flex flex-col min-h-0 transition-[width] duration-200"
+          :class="layout.rightCollapsed ? 'w-0' : 'w-[clamp(240px,22vw,340px)] border-l border-slate-200 bg-white overflow-hidden'"
         >
           <template v-if="layout.rightCollapsed">
             <button
               type="button"
-              class="h-9 shrink-0 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+              class="panel-expand panel-expand-right"
               title="展开右侧面板"
+              aria-label="展开右侧面板"
+              aria-controls="right-panel-content"
+              :aria-expanded="false"
               @click="layout.toggleRight()"
             >
               <PanelRightOpen :size="16" />
             </button>
-            <div class="flex-1 flex justify-center pt-3 text-[11px] tracking-widest text-slate-500 [writing-mode:vertical-rl]">
-              指令信号 · 寄存器 · 内存 · 波形
-            </div>
           </template>
 
           <n-tabs id="right-panel-content" type="line" size="small" animated class="flex-1 min-h-0 flex flex-col"

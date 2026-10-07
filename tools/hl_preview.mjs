@@ -67,7 +67,8 @@ function litOf(meta, on) {
   if (!meta || !on) return false
   if (trapLitOf(meta, on)) return true
   switch (meta.kind) {
-    case 'wire': return (meta.wires || []).some((id) => hl.wires.has(id))
+    case 'wire':
+    case 'portActivity': return (meta.wires || []).some((id) => hl.wires.has(id))
     case 'arrow': return !!meta.id && hl.wires.has(meta.id)
     case 'netLabel': return !!meta.net && hl.nets.has(meta.net)
     case 'module': return !!meta.id && hl.modules.has(meta.id)
@@ -104,6 +105,8 @@ function nodeToSvg(n, indent, on) {
     n.attrs && n.attrs.class ? String(n.attrs.class) : '',
     lit ? 'dp-lit' : '', dim ? 'dp-dim' : '', trapLit ? 'dp-trap-lit' : '',
     freshOf(m, on, lit) ? 'dp-fresh' : '',
+    lit && m?.kind === 'portActivity' ? 'dp-port-active' : '',
+    lit && m?.kind === 'portActivity' && m.group === 'TRAP' && hl.trapActive ? 'dp-port-trap' : '',
   ].filter(Boolean).join(' ')
   const attrs = { ...(n.attrs || {}) }
   if (cls) attrs.class = cls

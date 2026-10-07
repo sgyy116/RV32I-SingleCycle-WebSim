@@ -173,7 +173,9 @@ function chipClass(v: boolean | string) {
         v-if="st.trap.taken && g.trap"
         class="mb-2 rounded-lg px-2.5 py-1.5 bg-red-50 border border-red-300 text-red-700 text-[11px] font-mono font-semibold"
       >
-        ★ TRAP! cause=0x{{ st.trap.cause.toString(16) }}（跳转到 mtvec，返回点 mepc={{ st.trap.mepc }}）
+        ★ {{ (st.trap.cause >>> 31) ? '中断' : '异常' }} TRAP! cause=0x{{ (st.trap.cause >>> 0).toString(16) }}
+        <template v-if="parseInt(st.csr.mtvec, 16) === 0">（mtvec=0，未配置处理程序，停机）</template>
+        <template v-else>（跳转到 {{ st.next_pc }}，返回点 mepc={{ st.trap.mepc }}）</template>
       </div>
       <div v-if="g.csr" class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-mono">
         <div class="flex justify-between"><span class="text-slate-400">mtvec</span><span>{{ st.csr.mtvec }}</span></div>

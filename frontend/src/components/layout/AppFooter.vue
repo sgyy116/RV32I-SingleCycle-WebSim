@@ -21,7 +21,7 @@ onUnmounted(() => heightObserver?.disconnect())
        与改浅后的顶栏形成「顶栏=操作区、底栏=状态区」的层次 -->
   <footer ref="footerEl" class="app-footer shrink-0 flex items-center gap-4 px-4 text-sm bg-slate-900 text-slate-300 border-t border-slate-600">
     <div class="footer-connection flex items-center gap-1.5">
-      <span class="w-2 h-2 rounded-full" :class="sim.connected ? 'bg-green-500' : 'bg-red-500'"></span>
+      <span class="w-2.5 h-2.5 rounded-full" :class="sim.connected ? 'bg-green-500' : 'bg-red-500'"></span>
       <span>{{ sim.connected ? '后端已连接' : '后端未连接' }}</span>
       <span class="text-slate-500">ws://localhost:8080</span>
     </div>

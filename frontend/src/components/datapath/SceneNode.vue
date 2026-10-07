@@ -47,6 +47,7 @@ const lit = computed<boolean>(() => {
   switch (m.kind) {
     // 连线：合并段可能由多条线贡献，任一条激活就整段点亮
     case 'wire':
+    case 'portActivity':
       return (m.wires || []).some((id) => props.hl.wires.has(id))
     case 'arrow':
       return !!m.id && props.hl.wires.has(m.id)
@@ -84,7 +85,9 @@ function onEnter(ev: MouseEvent) {
   <component
     :is="node.tag"
     v-bind="node.attrs"
-    :class="{ 'dp-lit': lit, 'dp-dim': dim, 'dp-trap-lit': trapLit, 'dp-fresh': freshLit }"
+    :class="{ 'dp-lit': lit, 'dp-dim': dim, 'dp-trap-lit': trapLit, 'dp-fresh': freshLit,
+      'dp-port-active': lit && meta?.kind === 'portActivity',
+      'dp-port-trap': lit && meta?.kind === 'portActivity' && meta.group === 'TRAP' && hl.trapActive }"
     @mouseenter="onEnter"
     @mouseleave="emit('leave')"
   >

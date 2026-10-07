@@ -103,15 +103,15 @@ const sliderTheme = {
 
     <!-- 控制按钮组：粒度由细到粗 -->
     <div class="primary-controls shrink-0 flex items-center gap-1">
-        <button type="button" :class="BTN_GHOST" :disabled="!sim.connected || sim.isHalted" @click="wave.stepWave()">
+        <button type="button" :class="BTN_GHOST" :disabled="!wave.canAdvance" @click="wave.stepWave()">
           <ChevronRight :size="15" />单步
         </button>
 
-        <button type="button" :class="BTN_GHOST" :disabled="!sim.connected || sim.isHalted" @click="wave.playInstruction()">
+        <button type="button" :class="BTN_GHOST" :disabled="!wave.canAdvance" @click="wave.playInstruction()">
           <ChevronsRight :size="15" />单条指令
         </button>
 
-        <button type="button" :class="BTN_PRIMARY" :disabled="!sim.connected || sim.isHalted || wave.playing" @click="wave.startRun()">
+        <button type="button" :class="BTN_PRIMARY" :disabled="!wave.canAdvance || wave.playing" @click="wave.startRun()">
           <Play :size="15" />运行
         </button>
 

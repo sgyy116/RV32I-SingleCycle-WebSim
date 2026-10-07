@@ -2,30 +2,30 @@
   <rect width="2405" height="1620" fill="#ffffff"/>
   <g>
     <g class="module" data-id="reset">
-      <text x="49.3" y="913.0999999999999" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">reset</text>
+      <text x="49.3" y="913.0999999999999" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">reset</text>
     </g>
     <g class="module" data-id="clkmod">
-      <text x="164.9" y="1047.3999999999999" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">clock</text>
+      <text x="164.9" y="1047.3999999999999" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">clock</text>
     </g>
     <g class="module" data-id="PC">
       <rect x="180.2" y="741.1999999999999" width="91.8" height="249.9" rx="4" fill="#ffffff" stroke="#475569" stroke-width="2"/>
-      <text x="226.1" y="873.15" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">PC</text>
+      <text x="226.1" y="873.15" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">PC</text>
     </g>
     <g class="module" data-id="const4">
-      <text x="290.7" y="506.79999999999995" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">4</text>
+      <text x="290.7" y="506.79999999999995" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">4</text>
     </g>
     <g class="module" data-id="const0">
-      <text x="309.4" y="936.9" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">0</text>
+      <text x="309.4" y="936.9" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">0</text>
     </g>
     <g class="module" data-id="pc4adder">
       <polygon points="453.9,450.5 578,510.714 578,663.986 453.9,724.2 453.9,613.35 482.443,587.35 453.9,561.35" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
-      <text x="515.9499999999999" y="571.35" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">A</text>
-      <text x="515.9499999999999" y="593.35" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">D</text>
-      <text x="515.9499999999999" y="615.35" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">D</text>
+      <text x="515.9499999999999" y="571.35" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">A</text>
+      <text x="515.9499999999999" y="593.35" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">D</text>
+      <text x="515.9499999999999" y="615.35" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">D</text>
     </g>
     <g class="module" data-id="imem">
       <rect x="462.4" y="775.1999999999999" width="282.2" height="375.7" rx="4" fill="#ffffff" stroke="#475569" stroke-width="2"/>
-      <text x="603.5" y="960.55" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">指令存储器</text>
+      <text x="603.5" y="960.55" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">指令存储器</text>
       <text x="603.5" y="984.55" text-anchor="middle" font-size="16" fill="#64748b">(异步)</text>
     </g>
     <g class="module" data-id="pcmux1">
@@ -42,30 +42,30 @@
     </g>
     <g class="module" data-id="taken">
       <rect x="1020.85" y="23.8" width="166.6" height="102" rx="4" fill="#ffffff" stroke="#475569" stroke-width="2"/>
-      <text x="1104.15" y="81.8" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">taken</text>
+      <text x="1104.15" y="81.8" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">taken</text>
     </g>
     <g class="module" data-id="decoder">
       <rect x="856.8" y="374" width="119" height="788.8" rx="4" fill="#ffffff" stroke="#475569" stroke-width="2"/>
-      <text x="916.3" y="775.4" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">译码器</text>
+      <text x="916.3" y="775.4" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">译码器</text>
     </g>
     <g class="module" data-id="regfile">
       <rect x="1084.6" y="697" width="418.2" height="421.59999999999997" rx="4" fill="#ffffff" stroke="#475569" stroke-width="2"/>
-      <text x="1293.6999999999998" y="914.8" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">寄存器堆</text>
+      <text x="1293.6999999999998" y="914.8" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">寄存器堆</text>
     </g>
     <g class="module" data-id="pcimmadder">
       <polygon points="1477.3,132.6 1380.3999999999999,180.098 1380.3999999999999,301.002 1477.3,348.5 1477.3,266.55 1455.013,240.55 1477.3,214.55" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
-      <text x="1428.85" y="224.55" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">A</text>
-      <text x="1428.85" y="246.55" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">D</text>
-      <text x="1428.85" y="268.55" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">D</text>
+      <text x="1428.85" y="224.55" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">A</text>
+      <text x="1428.85" y="246.55" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">D</text>
+      <text x="1428.85" y="268.55" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">D</text>
     </g>
     <g class="module" data-id="alu">
       <polygon points="1805.3999999999999,659.6 1992.3999999999999,769.556 1992.3999999999999,1049.444 1805.3999999999999,1159.4 1805.3999999999999,935.5 1848.4099999999999,909.5 1805.3999999999999,883.5" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
-      <text x="1882.8999999999999" y="893.5" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">A</text>
-      <text x="1882.8999999999999" y="915.5" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">L</text>
-      <text x="1882.8999999999999" y="937.5" text-anchor="middle" font-size="18" font-weight="700" fill="#7c2d12">U</text>
-      <text x="1932.8999999999999" y="749.5640000000001" text-anchor="middle" font-size="12" fill="#9a3412">ZF</text>
-      <text x="1932.8999999999999" y="766.5640000000001" text-anchor="middle" font-size="12" fill="#9a3412">LT</text>
-      <text x="1932.8999999999999" y="783.5640000000001" text-anchor="middle" font-size="12" fill="#9a3412">F</text>
+      <text x="1882.8999999999999" y="893.5" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">A</text>
+      <text x="1882.8999999999999" y="915.5" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">L</text>
+      <text x="1882.8999999999999" y="937.5" text-anchor="middle" font-size="18" font-weight="700" fill="#000000">U</text>
+      <text x="1932.8999999999999" y="749.5640000000001" text-anchor="middle" font-size="12" fill="#475569">ZF</text>
+      <text x="1932.8999999999999" y="766.5640000000001" text-anchor="middle" font-size="12" fill="#475569">LT</text>
+      <text x="1932.8999999999999" y="783.5640000000001" text-anchor="middle" font-size="12" fill="#475569">F</text>
     </g>
     <g class="module" data-id="muxa">
       <rect x="1696.6" y="703.8" width="51" height="156.4" rx="25.5" ry="25.5" fill="#f1f5f9" stroke="#475569" stroke-width="2"/>
@@ -78,11 +78,11 @@
     </g>
     <g class="module" data-id="jalrclean">
       <ellipse cx="1173" cy="1482.4" rx="59.5" ry="28.9" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
-      <text x="1173" y="1487.4" text-anchor="middle" font-size="15" font-weight="700" fill="#3730a3">&amp;~1</text>
+      <text x="1173" y="1487.4" text-anchor="middle" font-size="15" font-weight="700" fill="#000000">&amp;~1</text>
     </g>
     <g class="module" data-id="dmem">
       <rect x="2138.6" y="853.4" width="207.4" height="428.4" rx="4" fill="#ffffff" stroke="#475569" stroke-width="2"/>
-      <text x="2242.2999999999997" y="1065.1" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">数据存储器</text>
+      <text x="2242.2999999999997" y="1065.1" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">数据存储器</text>
       <text x="2242.2999999999997" y="1089.1" text-anchor="middle" font-size="16" fill="#64748b">(异步)</text>
     </g>
     <g class="module" data-id="muxa0">
@@ -99,12 +99,12 @@
     </g>
     <g class="module" data-id="trapunit">
       <rect x="129.2" y="1360" width="187" height="136" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
-      <text x="222.7" y="1425.5" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">trap 判据</text>
+      <text x="222.7" y="1425.5" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">trap 判据</text>
       <text x="222.7" y="1449.5" text-anchor="middle" font-size="16" fill="#64748b">异常 / 中断</text>
     </g>
     <g class="module" data-id="csr">
       <rect x="476" y="1329.3999999999999" width="255" height="170" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
-      <text x="603.5" y="1411.8999999999999" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">CSR 寄存器组</text>
+      <text x="603.5" y="1411.8999999999999" text-anchor="middle" font-size="20" font-weight="700" fill="#000000">CSR 寄存器组</text>
       <text x="603.5" y="1435.8999999999999" text-anchor="middle" font-size="15" fill="#64748b">mtvec/mepc/mcause/mstatus/mie/mip</text>
     </g>
     <g class="module" data-id="wbmux1">
@@ -507,7 +507,7 @@
       <text x="34" y="581.42" fill="#0891b2" font-size="16" font-weight="600" text-anchor="middle">pc_next</text>
     </g>
   </g>
-  <g font-size="16" font-weight="600" fill="#0f172a">
+  <g font-size="16" font-weight="400" fill="#475569">
     <text x="471.4" y="867.6" text-anchor="start">a</text>
     <text x="471.4" y="933.9" text-anchor="start">d</text>
     <text x="471.4" y="993.4" text-anchor="start">we</text>
@@ -780,5 +780,110 @@
       <rect x="1790.74" y="1371.6" width="73.52" height="25" rx="4" fill="#ffffff" stroke="#047857" stroke-width="1.6" stroke-dasharray="5 3"/>
       <text x="1827.5" y="1389.54" text-anchor="middle" font-size="16" font-weight="700" fill="#047857" font-family="ui-monospace,Consolas,monospace">is_csr</text>
     </g>
+  </g>
+  <g>
+    <circle cx="180.2" cy="819.4" r="5" opacity="0" class="dp-port" data-port="PC.pc_next" data-wires="w_m5_pc" pointer-events="none"/>
+    <circle cx="180.2" cy="929.9" r="5" opacity="0" class="dp-port" data-port="PC.reset_in" data-wires="w_reset_pc" pointer-events="none"/>
+    <circle cx="272" cy="863.6" r="5" opacity="0" class="dp-port" data-port="PC.pc_out" data-wires="w_pc_imem,w_pc_add4" pointer-events="none"/>
+    <circle cx="229.5" cy="991.1" r="5" opacity="0" class="dp-port" data-port="PC.clk_in" data-wires="w_clk_pc" pointer-events="none"/>
+    <circle cx="453.9" cy="503.2" r="5" opacity="0" class="dp-port" data-port="pc4adder.a1" data-wires="w_c4_add4" pointer-events="none"/>
+    <circle cx="453.9" cy="669.8" r="5" opacity="0" class="dp-port" data-port="pc4adder.a2" data-wires="w_pc_add4" pointer-events="none"/>
+    <circle cx="578" cy="584.8" r="5" opacity="0" class="dp-port" data-port="pc4adder.out" data-wires="w_add4_m1,w_add4_m4" pointer-events="none"/>
+    <circle cx="462.4" cy="863.6" r="5" opacity="0" class="dp-port" data-port="imem.a" data-wires="w_pc_imem" pointer-events="none"/>
+    <circle cx="462.4" cy="929.9" r="5" opacity="0" class="dp-port" data-port="imem.d" data-wires="w_const0_d" pointer-events="none"/>
+    <circle cx="462.4" cy="989.4" r="5" opacity="0" class="dp-port" data-port="imem.we" data-wires="w_const0_we" pointer-events="none"/>
+    <circle cx="462.4" cy="1071" r="5" opacity="0" class="dp-port" data-port="imem.clk" data-wires="w_clk_imem" pointer-events="none"/>
+    <circle cx="744.6" cy="926.5" r="5" opacity="0" class="dp-port" data-port="imem.spo" data-wires="w_imem_dec" pointer-events="none"/>
+    <circle cx="414.8" cy="306" r="5" opacity="0" class="dp-port" data-port="pcmux1.m1_1" data-wires="w_m2_m1" pointer-events="none"/>
+    <circle cx="414.8" cy="358.7" r="5" opacity="0" class="dp-port" data-port="pcmux1.m1_0" data-wires="w_add4_m1" pointer-events="none"/>
+    <circle cx="360.4" cy="333.2" r="5" opacity="0" class="dp-port" data-port="pcmux1.m1_out" data-wires="w_m1_m6" pointer-events="none"/>
+    <circle cx="387.6" cy="406.3" r="5" opacity="0" class="dp-port" data-port="pcmux1.m1_sel" data-wires="w_sel_m1" pointer-events="none"/>
+    <circle cx="693.6" cy="334.9" r="5" opacity="0" class="dp-port" data-port="pcmux2.m2_1" data-wires="w_m3_m2" pointer-events="none"/>
+    <circle cx="693.6" cy="272" r="5" opacity="0" class="dp-port" data-port="pcmux2.m2_0" data-wires="w_m4_m2" pointer-events="none"/>
+    <circle cx="639.2" cy="306" r="5" opacity="0" class="dp-port" data-port="pcmux2.m2_out" data-wires="w_m2_m1" pointer-events="none"/>
+    <circle cx="666.4" cy="231.2" r="5" opacity="0" class="dp-port" data-port="pcmux2.m2_sel" data-wires="w_sel_m2" pointer-events="none"/>
+    <circle cx="804.1" cy="404.6" r="5" opacity="0" class="dp-port" data-port="pcmux3.m3_1" data-wires="w_jalr_m3" pointer-events="none"/>
+    <circle cx="804.1" cy="350.2" r="5" opacity="0" class="dp-port" data-port="pcmux3.m3_0" data-wires="w_immadd_m3" pointer-events="none"/>
+    <circle cx="751.4" cy="379.1" r="5" opacity="0" class="dp-port" data-port="pcmux3.m3_out" data-wires="w_m3_m2" pointer-events="none"/>
+    <circle cx="777.75" cy="443.7" r="5" opacity="0" class="dp-port" data-port="pcmux3.m3_sel" data-wires="w_sel_m3" pointer-events="none"/>
+    <circle cx="1128.8" cy="241.4" r="5" opacity="0" class="dp-port" data-port="pcmux4.m4_1" data-wires="w_immadd_m4" pointer-events="none"/>
+    <circle cx="1128.8" cy="289" r="5" opacity="0" class="dp-port" data-port="pcmux4.m4_0" data-wires="w_add4_m4" pointer-events="none"/>
+    <circle cx="1079.5" cy="272" r="5" opacity="0" class="dp-port" data-port="pcmux4.m4_out" data-wires="w_m4_m2" pointer-events="none"/>
+    <circle cx="1104.15" cy="190.4" r="5" opacity="0" class="dp-port" data-port="pcmux4.m4_sel" data-wires="w_taken_m4" pointer-events="none"/>
+    <circle cx="1020.85" cy="42.5" r="5" opacity="0" class="dp-port" data-port="taken.branch_in" data-wires="w_dec_branch" pointer-events="none"/>
+    <circle cx="1020.85" cy="74.8" r="5" opacity="0" class="dp-port" data-port="taken.f3sel_in" data-wires="w_dec_f3sel" pointer-events="none"/>
+    <circle cx="1020.85" cy="107.1" r="5" opacity="0" class="dp-port" data-port="taken.pol_in" data-wires="w_dec_pol" pointer-events="none"/>
+    <circle cx="1187.45" cy="56.1" r="5" opacity="0" class="dp-port" data-port="taken.zf_in" data-wires="w_alu_zf" pointer-events="none"/>
+    <circle cx="1187.45" cy="93.5" r="5" opacity="0" class="dp-port" data-port="taken.lt_in" data-wires="w_alu_lt" pointer-events="none"/>
+    <circle cx="1104.15" cy="125.8" r="5" opacity="0" class="dp-port" data-port="taken.out" data-wires="w_taken_m4" pointer-events="none"/>
+    <circle cx="1084.6" cy="802.4" r="5" opacity="0" class="dp-port" data-port="regfile.ra1" data-wires="w_dec_ra1" pointer-events="none"/>
+    <circle cx="1084.6" cy="880.6" r="5" opacity="0" class="dp-port" data-port="regfile.ra2" data-wires="w_dec_ra2" pointer-events="none"/>
+    <circle cx="1084.6" cy="979.2" r="5" opacity="0" class="dp-port" data-port="regfile.wen" data-wires="w_dec_wen" pointer-events="none"/>
+    <circle cx="1084.6" cy="1037" r="5" opacity="0" class="dp-port" data-port="regfile.waddr" data-wires="w_dec_waddr" pointer-events="none"/>
+    <circle cx="1502.8" cy="799" r="5" opacity="0" class="dp-port" data-port="regfile.rd1" data-wires="w_rf_ma0" pointer-events="none"/>
+    <circle cx="1502.8" cy="999.6" r="5" opacity="0" class="dp-port" data-port="regfile.rd2" data-wires="w_rf_mb1,w_rf_dmem" pointer-events="none"/>
+    <circle cx="1135.6" cy="1118.6" r="5" opacity="0" class="dp-port" data-port="regfile.clk_in" data-wires="w_clk_rf" pointer-events="none"/>
+    <circle cx="1237.6" cy="1118.6" r="5" opacity="0" class="dp-port" data-port="regfile.rst_in" data-wires="w_reset_rf" pointer-events="none"/>
+    <circle cx="1380.4" cy="1118.6" r="5" opacity="0" class="dp-port" data-port="regfile.wdata" data-wires="w_wb_rf" pointer-events="none"/>
+    <circle cx="1477.3" cy="304.3" r="5" opacity="0" class="dp-port" data-port="pcimmadder.a_imm" data-wires="w_imm_immadd" pointer-events="none"/>
+    <circle cx="1380.4" cy="241.4" r="5" opacity="0" class="dp-port" data-port="pcimmadder.out" data-wires="w_immadd_m4,w_immadd_m3" pointer-events="none"/>
+    <circle cx="1805.4" cy="793.9" r="5" opacity="0" class="dp-port" data-port="alu.a" data-wires="w_ma_alu" pointer-events="none"/>
+    <circle cx="1805.4" cy="1037" r="5" opacity="0" class="dp-port" data-port="alu.b" data-wires="w_mb_alu" pointer-events="none"/>
+    <circle cx="1992.4" cy="914.6" r="5" opacity="0" class="dp-port" data-port="alu.f_out" data-wires="w_alu_dmem,w_alu_jalr,w_alu_wb0" pointer-events="none"/>
+    <circle cx="1992.4" cy="819.4" r="5" opacity="0" class="dp-port" data-port="alu.zf_out" data-wires="w_alu_zf" pointer-events="none"/>
+    <circle cx="1992.4" cy="856.8" r="5" opacity="0" class="dp-port" data-port="alu.lt_out" data-wires="w_alu_lt" pointer-events="none"/>
+    <circle cx="1696.6" cy="793.9" r="5" opacity="0" class="dp-port" data-port="muxa.ma_0" data-wires="w_muxa0_muxa" pointer-events="none"/>
+    <circle cx="1747.6" cy="793.9" r="5" opacity="0" class="dp-port" data-port="muxa.ma_out" data-wires="w_ma_alu" pointer-events="none"/>
+    <circle cx="1722.1" cy="703.8" r="5" opacity="0" class="dp-port" data-port="muxa.ma_sel" data-wires="w_ctl_auipc" pointer-events="none"/>
+    <circle cx="1696.6" cy="999.6" r="5" opacity="0" class="dp-port" data-port="muxb.mb_1" data-wires="w_rf_mb1" pointer-events="none"/>
+    <circle cx="1696.6" cy="1065.9" r="5" opacity="0" class="dp-port" data-port="muxb.mb_0" data-wires="w_imm_muxb" pointer-events="none"/>
+    <circle cx="1747.6" cy="1037" r="5" opacity="0" class="dp-port" data-port="muxb.mb_out" data-wires="w_mb_alu" pointer-events="none"/>
+    <circle cx="1722.1" cy="1111.8" r="5" opacity="0" class="dp-port" data-port="muxb.mb_sel" data-wires="w_ctl_alusrc" pointer-events="none"/>
+    <circle cx="1715.3" cy="1259.7" r="5" opacity="0" class="dp-port" data-port="wbmux.wb_0" data-wires="w_wb1_wb" pointer-events="none"/>
+    <circle cx="1666" cy="1283.5" r="5" opacity="0" class="dp-port" data-port="wbmux.wb_out" data-wires="w_wb_rf" pointer-events="none"/>
+    <circle cx="1690.65" cy="1360" r="5" opacity="0" class="dp-port" data-port="wbmux.wb_sel" data-wires="w_ctl_link" pointer-events="none"/>
+    <circle cx="1232.5" cy="1482.4" r="5" opacity="0" class="dp-port" data-port="jalrclean.in" data-wires="w_alu_jalr" pointer-events="none"/>
+    <circle cx="1113.5" cy="1482.4" r="5" opacity="0" class="dp-port" data-port="jalrclean.out" data-wires="w_jalr_m3" pointer-events="none"/>
+    <circle cx="2244" cy="853.4" r="5" opacity="0" class="dp-port" data-port="dmem.we" data-wires="w_ctl_sw" pointer-events="none"/>
+    <circle cx="2138.6" cy="914.6" r="5" opacity="0" class="dp-port" data-port="dmem.a" data-wires="w_alu_dmem" pointer-events="none"/>
+    <circle cx="2138.6" cy="1207" r="5" opacity="0" class="dp-port" data-port="dmem.spo" data-wires="w_dmem_wb0" pointer-events="none"/>
+    <circle cx="2213.4" cy="1281.8" r="5" opacity="0" class="dp-port" data-port="dmem.d" data-wires="w_rf_dmem" pointer-events="none"/>
+    <circle cx="2315.4" cy="1281.8" r="5" opacity="0" class="dp-port" data-port="dmem.clk" data-wires="w_clk_dmem" pointer-events="none"/>
+    <circle cx="856.8" cy="926.5" r="5" opacity="0" class="dp-port" data-port="decoder.inst_in" data-wires="w_imem_dec" pointer-events="none"/>
+    <circle cx="877.2" cy="374" r="5" opacity="0" class="dp-port" data-port="decoder.f3sel_out" data-wires="w_dec_f3sel" pointer-events="none"/>
+    <circle cx="911.2" cy="374" r="5" opacity="0" class="dp-port" data-port="decoder.pol_out" data-wires="w_dec_pol" pointer-events="none"/>
+    <circle cx="945.2" cy="374" r="5" opacity="0" class="dp-port" data-port="decoder.branch_out" data-wires="w_dec_branch" pointer-events="none"/>
+    <circle cx="975.8" cy="380.8" r="5" opacity="0" class="dp-port" data-port="decoder.sw_out" data-wires="w_ctl_sw" pointer-events="none"/>
+    <circle cx="948.6" cy="1162.8" r="5" opacity="0" class="dp-port" data-port="decoder.alusrc_out" data-wires="w_ctl_alusrc" pointer-events="none"/>
+    <circle cx="975.8" cy="448.8" r="5" opacity="0" class="dp-port" data-port="decoder.auipc_out" data-wires="w_ctl_auipc" pointer-events="none"/>
+    <circle cx="975.8" cy="482.8" r="5" opacity="0" class="dp-port" data-port="decoder.islui_out" data-wires="w_ctl_islui" pointer-events="none"/>
+    <circle cx="975.8" cy="516.8" r="5" opacity="0" class="dp-port" data-port="decoder.imm_out" data-wires="w_imm_immadd,w_imm_muxa0,w_imm_muxb" pointer-events="none"/>
+    <circle cx="975.8" cy="550.8" r="5" opacity="0" class="dp-port" data-port="decoder.aluop_out" data-wires="w_ctl_aluop" pointer-events="none"/>
+    <circle cx="975.8" cy="584.8" r="5" opacity="0" class="dp-port" data-port="decoder.memtoreg_out" data-wires="w_ctl_memtoreg" pointer-events="none"/>
+    <circle cx="975.8" cy="802.4" r="5" opacity="0" class="dp-port" data-port="decoder.ra1_out" data-wires="w_dec_ra1" pointer-events="none"/>
+    <circle cx="975.8" cy="880.6" r="5" opacity="0" class="dp-port" data-port="decoder.ra2_out" data-wires="w_dec_ra2" pointer-events="none"/>
+    <circle cx="975.8" cy="979.2" r="5" opacity="0" class="dp-port" data-port="decoder.wen_out" data-wires="w_dec_wen" pointer-events="none"/>
+    <circle cx="975.8" cy="1037" r="5" opacity="0" class="dp-port" data-port="decoder.waddr_out" data-wires="w_dec_waddr" pointer-events="none"/>
+    <circle cx="907.8" cy="1162.8" r="5" opacity="0" class="dp-port" data-port="decoder.link_out" data-wires="w_ctl_link" pointer-events="none"/>
+    <circle cx="1543.6" cy="799" r="5" opacity="0" class="dp-port" data-port="muxa0.ma0_0" data-wires="w_rf_ma0" pointer-events="none"/>
+    <circle cx="1569.1" cy="680" r="5" opacity="0" class="dp-port" data-port="muxa0.ma0_sel" data-wires="w_ctl_islui" pointer-events="none"/>
+    <circle cx="1543.6" cy="717.4" r="5" opacity="0" class="dp-port" data-port="muxa0.ma0_1" data-wires="w_imm_muxa0" pointer-events="none"/>
+    <circle cx="1594.6" cy="758.2" r="5" opacity="0" class="dp-port" data-port="muxa0.ma0_out" data-wires="w_muxa0_muxa" pointer-events="none"/>
+    <circle cx="1996.65" cy="1292" r="5" opacity="0" class="dp-port" data-port="wbmux0.wb0_sel" data-wires="w_ctl_memtoreg" pointer-events="none"/>
+    <circle cx="2021.3" cy="1329.4" r="5" opacity="0" class="dp-port" data-port="wbmux0.wb0_0" data-wires="w_alu_wb0" pointer-events="none"/>
+    <circle cx="2021.3" cy="1370.2" r="5" opacity="0" class="dp-port" data-port="wbmux0.wb0_1" data-wires="w_dmem_wb0" pointer-events="none"/>
+    <circle cx="1972" cy="1317.5" r="5" opacity="0" class="dp-port" data-port="wbmux0.wb0_out" data-wires="w_wb0_wb" pointer-events="none"/>
+    <circle cx="1805.4" cy="1122" r="5" opacity="0" class="dp-port" data-port="alu.op" data-wires="w_ctl_aluop" pointer-events="none"/>
+    <circle cx="856.8" cy="476" r="5" opacity="0" class="dp-port" data-port="decoder.jalr_out" data-wires="w_sel_m3" pointer-events="none"/>
+    <circle cx="856.8" cy="748" r="5" opacity="0" class="dp-port" data-port="decoder.pcsel_out" data-wires="w_sel_m1" pointer-events="none"/>
+    <circle cx="969" cy="374" r="5" opacity="0" class="dp-port" data-port="decoder.jumpjalr_out" data-wires="w_sel_m2" pointer-events="none"/>
+    <circle cx="272" cy="333.2" r="5" opacity="0" class="dp-port" data-port="pcmux6.m6_0" data-wires="w_m1_m6" pointer-events="none"/>
+    <circle cx="221" cy="333.2" r="5" opacity="0" class="dp-port" data-port="pcmux6.m6_out" data-wires="w_m6_m5" pointer-events="none"/>
+    <circle cx="129.2" cy="333.2" r="5" opacity="0" class="dp-port" data-port="pcmux5.m5_0" data-wires="w_m6_m5" pointer-events="none"/>
+    <circle cx="78.2" cy="333.2" r="5" opacity="0" class="dp-port" data-port="pcmux5.m5_out" data-wires="w_m5_pc" pointer-events="none"/>
+    <circle cx="316.2" cy="1411" r="5" opacity="0" class="dp-port" data-port="trapunit.irq_in" data-wires="w_csr_irq" pointer-events="none"/>
+    <circle cx="493" cy="1499.4" r="5" opacity="0" class="dp-port" data-port="csr.irq_out" data-wires="w_csr_irq" pointer-events="none"/>
+    <circle cx="1853" cy="1317.5" r="5" opacity="0" class="dp-port" data-port="wbmux1.wb1_0" data-wires="w_wb0_wb" pointer-events="none"/>
+    <circle cx="1802" cy="1259.7" r="5" opacity="0" class="dp-port" data-port="wbmux1.wb1_out" data-wires="w_wb1_wb" pointer-events="none"/>
   </g>
 </svg>

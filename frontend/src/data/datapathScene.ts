@@ -24,7 +24,7 @@ export type SceneTag =
   | 'g' | 'path' | 'rect' | 'polygon' | 'ellipse' | 'circle' | 'line' | 'text'
 
 export interface SceneMeta {
-  kind: 'module' | 'wire' | 'arrow' | 'wireLabel' | 'portLabel' | 'netLabel' | 'dot' | 'stage'
+  kind: 'module' | 'wire' | 'arrow' | 'wireLabel' | 'portLabel' | 'portActivity' | 'netLabel' | 'dot' | 'stage'
   /** 部件 id / 连线 id / 端口 id，视 kind 而定 */
   id?: string
   /** 网络标签名（同名即同网） */
@@ -225,7 +225,7 @@ function moduleNode(m: ScaledModule): SceneNode {
     // 纯文字标签（reset / clock / 常量 4 / 常量 0）：居中写字，无框
     children.push(mk('text', {
       x: cx, y: cy + 7, 'text-anchor': 'middle',
-      'font-size': FS.textMod, 'font-weight': 700, fill: '#0f172a',
+      'font-size': FS.textMod, 'font-weight': 700, fill: '#000000',
     }, { text: m.label ?? '' }))
   } else {
     const body = shapeNode(m)
@@ -240,7 +240,7 @@ function moduleNode(m: ScaledModule): SceneNode {
     } else if (m.shape === 'circle') {
       children.push(mk('text', {
         x: cx, y: cy + 5, 'text-anchor': 'middle',
-        'font-size': FS.circle, 'font-weight': 700, fill: '#3730a3',
+        'font-size': FS.circle, 'font-weight': 700, fill: '#000000',
       }, { text: m.label ?? '' }))
     } else if (m.shape === 'alu') {
       // ALU / 加法器：标签竖排靠中间，副标题（ZF OF F）沿右边竖排
@@ -250,7 +250,7 @@ function moduleNode(m: ScaledModule): SceneNode {
         children.push(mk('text', {
           x: cx - (subs.length ? 16 : 0),
           y: cy - (chars.length - 1) * (cgap / 2) + i * cgap + 6,
-          'text-anchor': 'middle', 'font-size': FS.aluChar, 'font-weight': 700, fill: '#7c2d12',
+          'text-anchor': 'middle', 'font-size': FS.aluChar, 'font-weight': 700, fill: '#000000',
         }, { text: ch }))
       })
       if (subs.length) {
@@ -258,7 +258,7 @@ function moduleNode(m: ScaledModule): SceneNode {
         words.forEach((wd, i) => {
           children.push(mk('text', {
             x: cx + 34, y: m.y + m.h * 0.18 + i * 17,
-            'text-anchor': 'middle', 'font-size': FS.aluSub, fill: '#9a3412',
+            'text-anchor': 'middle', 'font-size': FS.aluSub, fill: '#475569',
           }, { text: wd }))
         })
       }
@@ -269,7 +269,7 @@ function moduleNode(m: ScaledModule): SceneNode {
       const top = cy - blockH / 2
       children.push(mk('text', {
         x: cx, y: top + 19, 'text-anchor': 'middle',
-        'font-size': FS.module, 'font-weight': 700, fill: '#0f172a',
+        'font-size': FS.module, 'font-weight': 700, fill: '#000000',
       }, { text: m.label ?? '' }))
       subs.forEach((s, i) => {
         const fs = s.length > 34 ? FS.sub - 2 : s.length > 24 ? FS.sub - 1 : FS.sub
@@ -726,10 +726,24 @@ export function buildDatapathScene(L: DatapathLayout): DatapathScene {
   }
 
   // ---- 端口名 / 网络标签画在最上层（框内文字不该被线压住）----
-  nodes.push(mk('g', { 'font-size': FS.port, 'font-weight': 600, fill: '#0f172a' }, {
+  nodes.push(mk('g', { 'font-size': FS.port, 'font-weight': 400, fill: '#475569' }, {
     children: portLabelNodes(ports, modById),
   }))
   nodes.push(mk('g', {}, { children: netLabelNodes(ports, modById) }))
+
+  // 端口指示点由实际连线端点生成，几何与离线 SVG 共用；不凭模块通电点亮全部口。
+  const activity = ports.flatMap((p): SceneNode[] => {
+    const m = modById[p.module]
+    if (!m || m.shape === 'text') return []
+    const ids = wires.filter(w => w.from === p.id || w.to === p.id).map(w => w.id)
+    if (!ids.length) return []
+    const [cx, cy] = portPos(m, p.side, p.offset)
+    return [mk('circle', { cx: FX(cx), cy: FX(cy), r: 5, opacity: 0, class: 'dp-port',
+      'data-port': p.id, 'data-wires': ids.join(','), 'pointer-events': 'none' }, {
+      meta: { kind: 'portActivity', id: p.id, wires: ids, group: m.group },
+    })]
+  })
+  nodes.push(mk('g', {}, { children: activity }))
 
   return { width: W, height: H, background: BG, nodes, wireAnchors }
 }

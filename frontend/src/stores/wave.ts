@@ -65,6 +65,8 @@ export const useWaveStore = defineStore('wave', () => {
   /** 当前正在第几波（1 基，给人看的） */
   const waveNo = computed(() => Math.min(index.value, total.value))
   const atEnd = computed(() => index.value >= total.value)
+  // 后端停机不等于当前指令的教学动画已播完。只允许补完，不能再向后端执行。
+  const canAdvance = computed(() => sim.connected && (!sim.isHalted || !atEnd.value))
 
   // ---------------- 定时器 ----------------
   function stopTimer() {
@@ -113,7 +115,7 @@ export const useWaveStore = defineStore('wave', () => {
   // ---------------- 三个按钮 ----------------
   /** 【单步】前进一波；已全亮就执行下一条并亮它第 1 波 */
   function stepWave() {
-    if (!sim.connected || sim.isHalted) return
+    if (!canAdvance.value) return
     cancel()
     if (!atEnd.value) {
       index.value++
@@ -125,7 +127,7 @@ export const useWaveStore = defineStore('wave', () => {
 
   /** 【单条指令】把这条指令剩下的波播完 */
   function playInstruction() {
-    if (!sim.connected || sim.isHalted) return
+    if (!canAdvance.value) return
     cancel()
     if (!atEnd.value) {
       schedule()
@@ -137,7 +139,7 @@ export const useWaveStore = defineStore('wave', () => {
 
   /** 【运行】连续执行，每条都按设定速度流动播 */
   function startRun() {
-    if (!sim.connected || sim.isHalted) return
+    if (!canAdvance.value) return
     cancel()
     if (!atEnd.value) {
       continuous.value = true
@@ -192,7 +194,7 @@ export const useWaveStore = defineStore('wave', () => {
 
   return {
     index, playing, continuous, speed,
-    raw, plan, total, shown, fresh, gates, waveNo, atEnd,
+    raw, plan, total, shown, fresh, gates, waveNo, atEnd, canAdvance,
     stepWave, playInstruction, startRun, pause, resetWaves,
   }
 })

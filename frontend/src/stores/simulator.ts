@@ -189,10 +189,13 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   /** 让后端前进一个周期。注意这是 WebSocket 往返，函数返回时新状态还没到。 */
   function step() {
+    if (isHalted.value) return
     ws.send({ type: 'step' })
   }
 
   function pause() {
+    // 停机后只暂停剩余教学动画，不把后端停机改成可继续执行的 paused。
+    if (isHalted.value) return
     ws.send({ type: 'pause' })
     status.value = 'paused'
     statusText.value = '已暂停'
@@ -227,7 +230,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
   }
 
   // ---------------- 派生状态 ----------------
-  const isHalted = computed(() => status.value === 'halted')
+  // 浏览历史会改变展示状态，但不会回滚后端；最新执行快照的停机标志必须保留。
+  const isHalted = computed(() => status.value === 'halted' || stateHistory.value.at(-1)?.halted === true)
 
   return {
     connected,

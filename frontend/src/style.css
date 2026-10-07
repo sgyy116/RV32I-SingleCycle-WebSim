@@ -67,6 +67,23 @@ body {
   pointer-events: none;
 }
 
+/* 隐藏时仍保留可测量宽度和实例；展开按钮悬浮在图区，不再占整条竖栏。 */
+#left-panel-content.panel-content-concealed { width: clamp(240px,26vw,380px); }
+#right-panel-content.panel-content-concealed { width: clamp(240px,22vw,340px); }
+.panel-expand { position: absolute; top: 10px; z-index: 5; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; border-radius: 8px; background: rgba(255,255,255,.94); color: #475569; cursor: pointer; }
+.panel-expand-left { left: 10px; }
+.panel-expand-right { right: 10px; }
+.panel-expand:hover { background: #eff6ff; color: #2563eb; }
+.panel-expand:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+/* 标签组在剩余导航空间中居中，右端收起按钮单独占位。 */
+#left-panel-content .n-tabs-nav-scroll-content,
+#right-panel-content .n-tabs-nav-scroll-content { justify-content: center; }
+#left-panel-content .n-tabs-tab,
+#right-panel-content .n-tabs-tab { font-weight: 700; }
+#left-panel-content .n-tabs-nav-scroll-wrapper,
+#right-panel-content .n-tabs-nav-scroll-wrapper { padding-inline: 8px; }
+
 .dp-svg, .dp-svg * {
   -webkit-user-select: none;
   user-select: none;
