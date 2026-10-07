@@ -23,10 +23,14 @@ async function open(width = 1920, height = 1080) {
   await context.addInitScript(() => {
     const Native = window.WebSocket
     window.WebSocket = class extends Native {
-      constructor(url, protocols) { super(String(url).replace(':8080', ':18080'), protocols) }
+      constructor(url, protocols) {
+        super(String(url).replace(':8080', ':18080'), protocols)
+        window.__uiTestSocket = this
+      }
     }
   })
   const page = await context.newPage()
+  page.on('websocket', socket => { page.backendSocket = socket })
   page.on('pageerror', e => errors.push(String(e)))
   await page.goto('http://localhost:18081', { waitUntil: 'networkidle' })
   await page.getByText('后端已连接', { exact: true }).waitFor()
@@ -62,6 +66,39 @@ async function main() {
     await delay(250)
   }
   browser = await chromium.launch({ executablePath: process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
+  await check('首次连接未加载程序时底栏提示正确', async p => {
+    assert((await p.locator('footer').innerText()).includes('程序未加载'), '首次连接没有显示程序未加载')
+  })
+  await check('未加载操作不是错误且真正错误仍保留', async p => {
+    // 使用真实 WebSocket 回包，验证消息分类而非仅掩盖底栏文字。
+    const received = p.backendSocket.waitForEvent('framereceived', {
+      predicate: e => JSON.parse(e.payload).type === 'error',
+    })
+    await p.getByRole('button', { name: '单步', exact: true }).click()
+    assert.equal(JSON.parse((await received).payload).message, '尚未加载程序')
+    const result = await p.evaluate(() => {
+      const s = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator')
+      return { status: s.status, text: s.statusText, error: s.errorMessage }
+    })
+    assert.deepEqual(result, { status: 'idle', text: '程序未加载', error: '' })
+    const genuine = p.backendSocket.waitForEvent('framereceived', {
+      predicate: e => JSON.parse(e.payload).type === 'error',
+    })
+    // 走应用原有连接，请真实后端返回另一类错误；不伪造前端消息。
+    await p.evaluate(() => window.__uiTestSocket.send(JSON.stringify({ type: '__invalid_test_message__' })))
+    assert(JSON.parse((await genuine).payload).message.includes('未知消息类型'))
+    const error = await p.evaluate(() => {
+      const s = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator')
+      return { status: s.status, text: s.statusText }
+    })
+    assert.deepEqual(error, { status: 'error', text: '错误' })
+    const failed = await p.evaluate(async () => {
+      const s = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator')
+      const ok = await s.compileAndLoad('this_is_not_an_instruction')
+      return { ok, status: s.status, text: s.statusText }
+    })
+    assert.equal(failed.ok, false); assert.equal(failed.status, 'error'); assert.equal(failed.text, '编译失败')
+  })
   await check('左右标签等宽分布并充分利用导航宽度', async p => {
     for (const width of [1920, 1366, 1024]) {
       await p.setViewportSize({ width, height: 900 })

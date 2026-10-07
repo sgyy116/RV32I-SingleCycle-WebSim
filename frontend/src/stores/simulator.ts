@@ -18,7 +18,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   // ---------------- 连接状态 ----------------
   const connected = ref(false)
   const status = ref<SimStatus>('idle')
-  const statusText = ref('未连接')
+  const statusText = ref('程序未加载')
 
   // ---------------- 仿真数据 ----------------
   const cycleState = ref<CycleState | null>(null)
@@ -48,7 +48,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     onMessage: handleMessage,
     onOpen: () => {
       connected.value = true
-      statusText.value = '已连接'
+      statusText.value = '程序未加载'
     },
     onClose: () => {
       connected.value = false
@@ -61,7 +61,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     switch (msg.type) {
       case 'ready':
         connected.value = true
-        statusText.value = `已连接 (v${msg.version})`
+        statusText.value = '程序未加载'
         break
       case 'cycle_state':
         if (msg.state) pushState(msg.state)
@@ -91,6 +91,13 @@ export const useSimulatorStore = defineStore('simulator', () => {
         ws.send({ type: 'get_disassembly', addr: programEntry.value, count: 256 })
         break
       case 'error':
+        // 缺少程序是操作前置提示，不是执行故障；其他错误不能被这一提示掩盖。
+        if (msg.message === '尚未加载程序' || msg.message === '未加载程序') {
+          status.value = 'idle'
+          statusText.value = '程序未加载'
+          errorMessage.value = ''
+          break
+        }
         status.value = 'error'
         statusText.value = '错误'
         errorMessage.value = msg.message ?? ''
