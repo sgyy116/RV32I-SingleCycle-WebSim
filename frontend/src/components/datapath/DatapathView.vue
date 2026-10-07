@@ -414,7 +414,7 @@ function toggleLegend() {
 /* 缩放条和状态条共同参与排版，窄窗口换行，空白区域仍可操作图。 */
 .dp-toolbar { position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; pointer-events: none; }
 
-.toolbar-pill { min-height: 34px; box-sizing: border-box; min-width: 0; max-width: 100%; display: flex; gap: 9px; align-items: center; padding: 5px 14px; border: 1px solid #cbd5e1; border-radius: 0; background: #ffffff; color: #334155; font-size: 12px; white-space: nowrap; }
+.toolbar-pill { min-height: 34px; box-sizing: border-box; min-width: 0; max-width: 100%; display: flex; gap: 9px; align-items: center; padding: 5px 14px; border: 1px solid #cbd5e1; border-radius: 999px; background: #ffffff; color: #334155; font-size: 12px; white-space: nowrap; }
 .status-pill { justify-self: center; overflow: hidden; pointer-events: none; }
 .status-pill { max-width: 100%; }
 .instruction-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

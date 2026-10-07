@@ -108,7 +108,16 @@ async function main() {
     })
     assert.deepEqual(style.a, style.b, '缩放和周期栏视觉规范不同')
     assert.equal(style.a[0], 'rgb(255, 255, 255)', '工具条不是白底')
-    assert.equal(style.a[1], '0px', '工具条不是直角矩形')
+    const checkRound = async () => {
+      const radii = await p.locator('.toolbar-pill').evaluateAll(els => els.map(el => parseFloat(getComputedStyle(el).borderRadius)))
+      assert(radii.length === 2 && radii.every(r => r >= 17), '工具条不是两端圆润的圆角框')
+    }
+    await checkRound()
+    // 在真实页面临时注入直角样式；同一检查必须失败，移除后恢复，源码不变。
+    const mutant = await p.addStyleTag({ content: '.toolbar-pill { border-radius: 0 !important; }' })
+    await assert.rejects(checkRound, /工具条不是两端圆润的圆角框/)
+    await mutant.evaluate(el => el.remove())
+    await checkRound()
     assert.equal(style.wrap, style.svg, '中央留白与图样背景色不同')
   })
   await check('侧栏收起仅留按钮且保留撤销', async p => {
