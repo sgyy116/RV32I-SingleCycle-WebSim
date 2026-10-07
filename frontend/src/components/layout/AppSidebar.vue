@@ -31,7 +31,7 @@ const layout = useLayoutStore()
       </button>
     </template>
 
-    <n-tabs id="left-panel-content" type="line" animated size="small" class="flex-1 min-h-0 flex flex-col"
+    <n-tabs id="left-panel-content" type="line" animated size="small" justify-content="space-between" class="flex-1 min-h-0 flex flex-col"
       :class="{ 'panel-content-concealed': layout.leftCollapsed }"
       :aria-hidden="layout.leftCollapsed" :inert="layout.leftCollapsed">
       <!-- 折叠按钮挂在 tab 栏右端（naive 的 suffix 插槽），省掉单独一整行标题栏 -->

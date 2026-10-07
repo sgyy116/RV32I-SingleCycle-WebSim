@@ -73,13 +73,13 @@ const themeOverrides: GlobalThemeOverrides = {
             </button>
           </template>
 
-          <n-tabs id="right-panel-content" type="line" size="small" animated class="flex-1 min-h-0 flex flex-col"
+          <n-tabs id="right-panel-content" type="line" size="small" justify-content="space-between" animated class="flex-1 min-h-0 flex flex-col"
             :class="{ 'panel-content-concealed': layout.rightCollapsed }"
             :aria-hidden="layout.rightCollapsed" :inert="layout.rightCollapsed">
-            <template #suffix>
+            <template #prefix>
               <button
                 type="button"
-                class="mr-1 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+                class="ml-1 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-800"
                 title="收起右侧面板"
                 @click="layout.toggleRight()"
               >

@@ -76,13 +76,14 @@ body {
 .panel-expand:hover { background: #eff6ff; color: #2563eb; }
 .panel-expand:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
-/* 标签组在剩余导航空间中居中，右端收起按钮单独占位。 */
-#left-panel-content .n-tabs-nav-scroll-content,
-#right-panel-content .n-tabs-nav-scroll-content { justify-content: center; }
+/* 每个选项等分导航可用宽度；右栏按钮在左端，左栏按钮仍在右端。 */
+#right-panel-content > .n-tabs-nav > .n-tabs-nav__prefix { padding-right: 4px; }
+#left-panel-content .n-tabs-tab-wrapper,
+#right-panel-content .n-tabs-tab-wrapper { flex: 1 1 0; min-width: 0; }
 #left-panel-content .n-tabs-tab,
-#right-panel-content .n-tabs-tab { font-weight: 700; }
+#right-panel-content .n-tabs-tab { width: 100%; justify-content: center; font-weight: 700; font-size: clamp(12px, .95vw, 14px); }
 #left-panel-content .n-tabs-nav-scroll-wrapper,
-#right-panel-content .n-tabs-nav-scroll-wrapper { padding-inline: 8px; }
+#right-panel-content .n-tabs-nav-scroll-wrapper { padding-inline: 4px; }
 
 .dp-svg, .dp-svg * {
   -webkit-user-select: none;

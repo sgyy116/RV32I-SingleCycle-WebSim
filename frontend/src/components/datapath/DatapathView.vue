@@ -47,8 +47,8 @@ const view = reactive({ x: 0, y: 0, w: scene.width, h: scene.height })
 const ZOOM_MIN = 0.6
 const ZOOM_MAX = 3
 const zoomTheme = {
-  Slider: { fillColor: '#93c5fd', fillColorHover: '#bfdbfe', railColor: 'rgba(255,255,255,.25)',
-    railColorHover: 'rgba(255,255,255,.4)', handleColor: '#f8fafc' },
+  Slider: { fillColor: '#2563eb', fillColorHover: '#3b82f6', railColor: '#cbd5e1',
+    railColorHover: '#94a3b8', handleColor: '#ffffff' },
 }
 
 function resetView() {
@@ -335,7 +335,7 @@ function toggleLegend() {
 
       <template v-if="legendOpen">
         <div class="lg-row">
-          <span class="lg-cap">线的类别</span>
+          <span class="lg-cap">线条类别</span>
           <span v-for="k in WIRE_KINDS" :key="k.kind" class="lg-item">
             <!-- 只有色块可点（且只有它开 pointer-events）—— 容器整块开 auto 会挡住
                  图区左下角的平移和连线悬停。点开的是「线型」词条。 -->
@@ -414,22 +414,22 @@ function toggleLegend() {
 /* 缩放条和状态条共同参与排版，窄窗口换行，空白区域仍可操作图。 */
 .dp-toolbar { position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; pointer-events: none; }
 
-.toolbar-pill { min-height: 34px; box-sizing: border-box; min-width: 0; max-width: 100%; display: flex; gap: 9px; align-items: center; padding: 5px 14px; border-radius: 999px; background: rgba(15,23,42,.9); color: #e2e8f0; font-size: 12px; white-space: nowrap; }
+.toolbar-pill { min-height: 34px; box-sizing: border-box; min-width: 0; max-width: 100%; display: flex; gap: 9px; align-items: center; padding: 5px 14px; border: 1px solid #cbd5e1; border-radius: 0; background: #ffffff; color: #334155; font-size: 12px; white-space: nowrap; }
 .status-pill { justify-self: center; overflow: hidden; pointer-events: none; }
 .status-pill { max-width: 100%; }
 .instruction-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .status-pill .sep { color: #64748b; }
 .mono { font-family: Consolas, monospace; }
-.strong { color: #bfdbfe; }
+.strong { color: #1d4ed8; }
 .trap-tag { padding: 1px 8px; border-radius: 999px; background: #dc2626; color: #fff; font-weight: 700; }
-.wave-tag { font-family: Consolas, monospace; color: #93c5fd; }
-.wave-tag em { font-style: normal; color: #4ade80; }
+.wave-tag { font-family: Consolas, monospace; color: #1d4ed8; }
+.wave-tag em { font-style: normal; color: #15803d; }
 
 .zoom-bar { pointer-events: auto; }
-.zoom-label, .zoom-value { flex-shrink: 0; color: #e2e8f0; font-size: 12px; font-weight: 700; }
+.zoom-label, .zoom-value { flex-shrink: 0; color: #334155; font-size: 12px; font-weight: 700; }
 .zoom-slider { width: clamp(70px, 14vw, 140px); }
-.zoom-bar button { pointer-events: auto; padding: 2px 9px; border: 1px solid #64748b; border-radius: 999px; background: transparent; color: #e2e8f0; font-size: 12px; cursor: pointer; }
-.zoom-bar button:hover { border-color: #93c5fd; color: #bfdbfe; }
+.zoom-bar button { pointer-events: auto; padding: 2px 9px; border: 1px solid #94a3b8; border-radius: 0; background: #ffffff; color: #334155; font-size: 12px; cursor: pointer; }
+.zoom-bar button:hover { border-color: #2563eb; color: #1d4ed8; }
 
 /* 图例：两行，窄屏自动换行。整块保持 pointer-events:none —— 它压在图上，
    开 auto 会挡住左下角的平移与连线悬停。只有折叠按钮和色块单独开。 */

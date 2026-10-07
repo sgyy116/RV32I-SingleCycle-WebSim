@@ -62,6 +62,28 @@ async function main() {
     await delay(250)
   }
   browser = await chromium.launch({ executablePath: process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
+  await check('左右标签等宽分布并充分利用导航宽度', async p => {
+    for (const width of [1920, 1366, 1024]) {
+      await p.setViewportSize({ width, height: 900 })
+      for (const id of ['left-panel-content', 'right-panel-content']) {
+        const m = await p.locator(`#${id}`).evaluate(el => {
+          const tabs = [...el.querySelectorAll('.n-tabs-tab')].map(t => t.getBoundingClientRect())
+          const area = el.querySelector('.n-tabs-nav-scroll-wrapper').getBoundingClientRect()
+          return { widths: tabs.map(t => t.width), used: tabs.reduce((n,t) => n + t.width, 0), available: area.width }
+        })
+        assert(Math.max(...m.widths) - Math.min(...m.widths) < 2, `${id}选项非等宽 ${JSON.stringify(m)}`)
+        assert(m.used >= m.available * .9, `${id}标签组未充分使用宽度 ${JSON.stringify(m)}`)
+      }
+    }
+  })
+  await check('右栏收起按钮位于标签左侧', async p => {
+    const button = await p.getByRole('button', { name: '收起右侧面板', exact: true }).boundingBox()
+    const first = await p.locator('#right-panel-content .n-tabs-tab').first().boundingBox()
+    assert(button && first && button.x + button.width <= first.x + 1, '右栏收起按钮仍在标签右侧')
+  })
+  await check('图例显示线条类别', async p => {
+    assert(await p.getByText('线条类别', { exact: true }).isVisible(), '图例文案未更新')
+  })
   await check('缩放范围与1:1复位', async p => {
     const svg = p.locator('svg.dp-svg'), original = await svg.getAttribute('viewBox')
     const slider = p.locator('.zoom-bar [role="slider"]')
@@ -85,6 +107,8 @@ async function main() {
         wrap: getComputedStyle(document.querySelector('.dp-wrap')).backgroundColor, svg: getComputedStyle(rect).fill }
     })
     assert.deepEqual(style.a, style.b, '缩放和周期栏视觉规范不同')
+    assert.equal(style.a[0], 'rgb(255, 255, 255)', '工具条不是白底')
+    assert.equal(style.a[1], '0px', '工具条不是直角矩形')
     assert.equal(style.wrap, style.svg, '中央留白与图样背景色不同')
   })
   await check('侧栏收起仅留按钮且保留撤销', async p => {
