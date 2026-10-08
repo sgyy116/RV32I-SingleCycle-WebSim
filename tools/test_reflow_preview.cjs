@@ -63,6 +63,43 @@ async function main() {
     if (width <= 1200) assert(f.execution > f.summary, '窄屏底栏未分成两行')
     results.push({ name: `${width}x${height} 工具栏分组与统一底栏`, passed: true })
   }
+  const checkSingleHeader = async () => {
+    assert.equal(await page.locator('.app-header').evaluate(el => el.getBoundingClientRect().height), 56, '平台名称导致顶栏中途换为两行')
+  }
+  for (const width of [...Array.from({length:28}, (_,i) => 1500-i*20), ...Array.from({length:28}, (_,i) => 960+i*20)]) {
+    await page.setViewportSize({ width, height: 800 })
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+    await checkSingleHeader()
+  }
+  await page.setViewportSize({ width: 1000, height: 800 })
+  await page.waitForTimeout(80)
+  const headerMutation = await page.addStyleTag({ content: '.header-name.is-concealed { position: static !important; visibility: visible !important; }' })
+  await assert.rejects(checkSingleHeader, /平台名称导致顶栏中途换为两行/)
+  await headerMutation.evaluate(el => el.remove())
+  await page.waitForTimeout(80)
+  await checkSingleHeader()
+  results.push({ name: '平台名称提前隐藏，连续往返顶栏保持单行', passed: true })
+
+  await page.setViewportSize({ width: 1500, height: 800 })
+  await page.waitForTimeout(80)
+  await page.locator('.lg-toggle[title="收起图例"]').waitFor()
+  await page.setViewportSize({ width: 1300, height: 800 })
+  await page.locator('.lg-toggle[title="展开图例"]').waitFor()
+  assert.equal(await page.locator('.legend-content').isVisible(), false, '图例不足两行宽度时没有自动收起')
+  await page.locator('.lg-toggle[title="展开图例"]').click()
+  const checkLegendRows = async () => {
+    const rows = await page.locator('.lg-row').evaluateAll(els => els.map(el => [...el.children].map(child => child.getBoundingClientRect().top)))
+    assert.equal(rows.length, 2)
+    assert(rows.every(tops => tops.length > 0 && Math.max(...tops)-Math.min(...tops) < 2), '图例内容发生额外换行')
+  }
+  await checkLegendRows()
+  const legendMutation = await page.addStyleTag({ content: '.legend .lg-row { width: 300px !important; flex-wrap: wrap !important; }' })
+  await assert.rejects(checkLegendRows, /图例内容发生额外换行/)
+  await legendMutation.evaluate(el => el.remove())
+  await checkLegendRows()
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.locator('.lg-toggle[title="展开图例"]').waitFor()
+  results.push({ name: '图例按图区宽度自动收起，手动展开不额外换行', passed: true })
   const checkUnique = async () => {
     assert.equal(await page.locator('.status-pill').count(), 0, '图区存在重复执行状态')
     assert.equal(await page.locator('.footer-cycle').count(), 1, '周期信息必须只显示一次')

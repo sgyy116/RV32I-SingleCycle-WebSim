@@ -12,10 +12,24 @@ const sim = useSimulatorStore()
 const wave = useWaveStore()
 const glossary = useGlossaryStore()
 const headerEl = ref<HTMLElement | null>(null)
+const compactBrand = ref(false)
 let heightObserver: ResizeObserver | null = null
 
 onMounted(() => {
   const updateHeight = () => {
+    const header = headerEl.value
+    if (header) {
+      const style = getComputedStyle(header)
+      const brand = header.querySelector('.header-brand') as HTMLElement
+      const name = header.querySelector('.header-name') as HTMLElement
+      const margin = (el: Element) => { const s = getComputedStyle(el); return parseFloat(s.marginLeft) + parseFloat(s.marginRight) }
+      const groups = [...header.children].filter(el => !el.classList.contains('header-spacer') && el !== brand)
+      // 名称隐藏时仍在不可见的绝对定位层中测量，不以当前换行结果作为判据。
+      const fullBrand = 32 + 8 + name.getBoundingClientRect().width + margin(brand)
+      const required = fullBrand + groups.reduce((n, el) => n + el.getBoundingClientRect().width + margin(el), 0)
+        + groups.length * parseFloat(style.columnGap) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+      compactBrand.value = header.clientWidth <= 600 || header.clientWidth < required + 2
+    }
     if (headerEl.value) document.documentElement.style.setProperty('--rv-header-h', `${headerEl.value.getBoundingClientRect().height}px`)
   }
   updateHeight()
@@ -82,7 +96,7 @@ const sliderTheme = {
     <!-- Logo：窄屏只留徽标。徽标加白底是因为校徽本身是深色线条，压在 slate-700 上看不清 -->
     <div class="header-brand flex shrink-0 items-center gap-2 mr-2">
       <img :src="hduLogo" alt="杭州电子科技大学" class="w-8 h-8 rounded-lg object-contain bg-white" />
-      <div class="leading-tight hidden lg:block">
+      <div class="header-name leading-tight" :class="{ 'is-concealed': compactBrand }" :aria-hidden="compactBrand">
         <div class="text-sm font-semibold whitespace-nowrap">RV32I 单周期模型机</div>
         <div class="text-[10px] text-slate-300 whitespace-nowrap">教学可视化仿真平台</div>
       </div>
@@ -152,6 +166,8 @@ const sliderTheme = {
 </template>
 
 <style scoped>
+.header-name { width: max-content; }
+.header-name.is-concealed { position: absolute; visibility: hidden; pointer-events: none; }
 .app-header { min-height: 56px; padding-top: 8px; padding-bottom: 8px; flex-wrap: wrap; }
 @media (max-width: 1100px) {
   .app-header { justify-content: center; }

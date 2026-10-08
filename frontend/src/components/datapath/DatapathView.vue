@@ -14,7 +14,7 @@
 // wave.shown 就是「本波为止该亮的东西」，本组件只管画。
 // ============================================================================
 
-import { computed, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
@@ -267,21 +267,25 @@ const tipH = computed(() => 34 + visibleLines.value.length * 18)
 
 // ---------------------------------------------------------------- 图例
 
-/** 窄屏默认收起：图例占左下角，主区一窄它就开始盖图。
- *  门槛取 1280 是因为主区 = 窗口 − 左栏(clamp 240~380) − 右栏(clamp 240~340)，
- *  1300 以下主区就不到 700px，两行图例横着铺不下。 */
 const legendOpen = ref(false)
-/** 用户手动点过之后就不再自动跟随窗口宽度 —— 他的选择优先。 */
+const legendWrap = ref<HTMLElement | null>(null)
+const legendContent = ref<HTMLElement | null>(null)
 let legendTouched = false
-const mqWide = window.matchMedia('(min-width: 1280px)')
-/** 具名函数，不能写成两个匿名箭头函数 —— 那样 add 和 remove 拿到的不是同一个
- *  引用，removeEventListener 会静默失效，监听器越积越多。 */
-function onMqChange(e: MediaQueryListEvent) {
-  if (!legendTouched) legendOpen.value = e.matches
+let legendObserver: ResizeObserver | null = null
+function measureLegend() {
+  if (!legendWrap.value || !legendContent.value) return
+  const available = Math.min(720, legendWrap.value.clientWidth - 24) - 22
+  const required = Math.max(...[...legendContent.value.querySelectorAll('.lg-row')].map(el => el.scrollWidth))
+  // 按图区实际宽度判断：用户曾展开过，变窄到需要换行时仍自动收起。
+  if (required > available) legendOpen.value = false
+  else if (!legendTouched) legendOpen.value = true
 }
-if (!legendTouched) legendOpen.value = mqWide.matches
-mqWide.addEventListener('change', onMqChange)
-onUnmounted(() => mqWide.removeEventListener('change', onMqChange))
+onMounted(() => {
+  measureLegend()
+  legendObserver = new ResizeObserver(measureLegend)
+  if (legendWrap.value) legendObserver.observe(legendWrap.value)
+})
+onUnmounted(() => legendObserver?.disconnect())
 
 function toggleLegend() {
   legendTouched = true
@@ -290,20 +294,20 @@ function toggleLegend() {
 </script>
 
 <template>
-  <div class="dp-wrap" :style="{ background: scene.background }">
+  <div ref="legendWrap" class="dp-wrap" :style="{ background: scene.background }">
     <!-- 图例。两行：上面是「线传的是什么」，下面是「高亮表示什么」。
          上面那一行的色块**全部由 WIRE_KINDS 渲染**，本组件里不出现任何 hex ——
          图例和图上画的线读的是同一张表，所以不可能出现「图例说蓝、图上画绿」。
 
          异常状态标签仅在真实 trap 时显示，不作为触发按钮。 -->
-    <div class="legend">
+    <div class="legend" :class="{ 'is-open': legendOpen }">
       <button type="button" class="lg-toggle" :title="legendOpen ? '收起图例' : '展开图例'" @click="toggleLegend">
         <ChevronDown v-if="legendOpen" :size="12" />
         <ChevronRight v-else :size="12" />
         图例
       </button>
 
-      <template v-if="legendOpen">
+      <div ref="legendContent" class="legend-content" :class="{ 'is-concealed': !legendOpen }" :aria-hidden="!legendOpen" :inert="!legendOpen">
         <div class="lg-row">
           <span class="lg-cap">线条类别</span>
           <span v-for="k in WIRE_KINDS" :key="k.kind" class="lg-item">
@@ -328,7 +332,7 @@ function toggleLegend() {
           <span class="lg-item"><i class="sw off" />未激活</span>
           <span class="lg-item"><i class="sw badge" />实时数值</span>
         </div>
-      </template>
+      </div>
     </div>
 
     <svg
@@ -384,9 +388,12 @@ function toggleLegend() {
 /* 图例：两行，窄屏自动换行。整块保持 pointer-events:none —— 它压在图上，
    开 auto 会挡住左下角的平移与连线悬停。只有折叠按钮和色块单独开。 */
 .legend { position: absolute; z-index: 3; left: 12px; bottom: 10px; display: flex; flex-direction: column; gap: 3px; padding: 5px 10px; border-radius: 8px; background: rgba(255,255,255,.94); border: 1px solid #e2e8f0; color: #475569; font-size: 11px; pointer-events: none; max-width: min(720px, calc(100% - 24px)); }
-.legend .lg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; }
+.legend.is-open { width: min(720px, calc(100% - 24px)); }
+.legend-content { display: flex; flex-direction: column; gap: 3px; overflow-x: auto; pointer-events: auto; }
+.legend-content.is-concealed { position: absolute; visibility: hidden; pointer-events: none; width: max-content; }
+.legend .lg-row { width: max-content; display: flex; flex-wrap: nowrap; align-items: center; gap: 2px 14px; }
 .legend .lg-cap { color: #94a3b8; }
-.legend .lg-item { display: flex; gap: 6px; align-items: center; }
+.legend .lg-item { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 .legend .lg-toggle { display: flex; gap: 3px; align-items: center; align-self: flex-start; margin-left: -4px; padding: 1px 4px; border: 0; border-radius: 4px; background: none; color: #64748b; font: inherit; cursor: pointer; pointer-events: auto; }
 .legend .lg-toggle:hover { background: #f1f5f9; color: #0f172a; }
 .legend .lg-sw { display: flex; align-items: center; margin: 0; padding: 5px 2px; border: 0; background: none; cursor: pointer; pointer-events: auto; }
