@@ -80,7 +80,7 @@ const sliderTheme = {
   <!-- 顶栏可换行；实际高度同步给词典浮层。示例选择仅保留编辑器内一处。 -->
   <header ref="headerEl" class="app-header shrink-0 flex items-center gap-2 px-3 md:px-4 bg-slate-700 text-[#f8fafc] border-b border-slate-600">
     <!-- Logo：窄屏只留徽标。徽标加白底是因为校徽本身是深色线条，压在 slate-700 上看不清 -->
-    <div class="flex shrink-0 items-center gap-2 mr-2">
+    <div class="header-brand flex shrink-0 items-center gap-2 mr-2">
       <img :src="hduLogo" alt="杭州电子科技大学" class="w-8 h-8 rounded-lg object-contain bg-white" />
       <div class="leading-tight hidden lg:block">
         <div class="text-sm font-semibold whitespace-nowrap">RV32I 单周期模型机</div>
@@ -91,12 +91,13 @@ const sliderTheme = {
     <!-- 术语词典：界面上遇到的任何专有名词都能在这里查到 -->
     <button
       type="button"
+      class="header-glossary"
       :class="glossary.open ? BTN_ON : BTN_GHOST"
       title="术语词典：看不懂的部件名、指令名、术语都查这里"
       @click="glossary.toggle()"
     >
       <BookOpen :size="14" />
-      <span class="hidden md:inline">术语词典</span>
+      <span>术语词典</span>
     </button>
 
     <div class="header-spacer flex-1 min-w-0"></div>
@@ -156,8 +157,27 @@ const sliderTheme = {
   .app-header { justify-content: center; }
   .header-spacer { display: none; }
 }
-@media (max-width: 480px) {
-  .primary-controls { flex-wrap: wrap; justify-content: center; min-width: 0; max-width: 100%; }
-  .primary-controls button { padding-left: 6px; padding-right: 6px; }
+/* 窄窗口使用固定分组，避免复位按钮独自换行。 */
+@media (max-width: 600px) {
+  .app-header { display: grid; grid-template-columns: 32px repeat(3, minmax(0, 1fr)); gap: 6px; padding-inline: 12px; }
+  .header-brand { grid-column: 1; grid-row: 1 / 3; margin: 0; }
+  .primary-controls { display: contents; }
+  .primary-controls button { justify-content: center; padding-inline: 6px; }
+  .primary-controls button:nth-child(1) { grid-column: 2; grid-row: 1; }
+  .primary-controls button:nth-child(2) { grid-column: 3; grid-row: 1; }
+  .primary-controls button:nth-child(3) { grid-column: 4; grid-row: 1; }
+  .primary-controls button:nth-child(4) { grid-column: 2; grid-row: 2; }
+  .primary-controls button:nth-child(5) { grid-column: 3; grid-row: 2; }
+  .header-glossary { grid-column: 4; grid-row: 2; justify-content: center; padding-inline: 4px; }
+  .app-header :deep(button svg) { display: none; }
+  .header-speed { grid-column: 1 / 3; grid-row: 3; gap: 4px; }
+  .header-speed :deep(.n-slider) { width: 64px; }
+  .header-speed > span:last-child { width: auto; }
+  .header-history { grid-column: 3 / 5; grid-row: 3; justify-content: flex-end; }
+  .header-history button { padding-inline: 6px; }
+}
+@media (max-width: 380px) {
+  .header-speed { grid-column: 1 / -1; justify-content: center; }
+  .header-history { grid-column: 1 / -1; grid-row: 4; justify-content: center; }
 }
 </style>

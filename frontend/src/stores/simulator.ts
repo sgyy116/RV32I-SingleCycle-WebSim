@@ -241,6 +241,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
   const isHalted = computed(() => status.value === 'halted' || stateHistory.value.at(-1)?.halted === true)
 
   return {
+    connectionUrl: WS_URL,
     connected,
     status,
     statusText,

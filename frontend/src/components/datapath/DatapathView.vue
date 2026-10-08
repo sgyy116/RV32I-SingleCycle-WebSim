@@ -293,7 +293,7 @@ function toggleLegend() {
 
 <template>
   <div class="dp-wrap" :style="{ background: scene.background }">
-    <!-- 缩放和指令状态共用工具条；空间不足时换行，不叠压。 -->
+    <!-- 图区只保留缩放工具，执行状态统一显示在底栏。 -->
     <div class="dp-toolbar">
       <!-- 缩放控制 -->
       <div class="zoom-bar toolbar-pill">
@@ -304,20 +304,6 @@ function toggleLegend() {
         </n-config-provider>
         <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
         <button type="button" @click="resetView">1:1</button>
-      </div>
-
-      <!-- 顶部状态条 -->
-      <div class="status-pill toolbar-pill">
-        <span>周期 #{{ sim.cycleCount }}</span>
-        <span class="sep">|</span>
-        <span class="mono">{{ st?.pc ?? '0x80000000' }}</span>
-        <span class="sep">|</span>
-        <span class="mono strong instruction-text">{{ st?.disassembly ?? '尚未执行指令' }}</span>
-        <span v-if="wave.total > 0" class="wave-tag">
-          第 {{ wave.waveNo }} / {{ wave.total }} 波
-          <em v-if="wave.playing">▶</em>
-        </span>
-        <span v-if="hl.trapActive" class="trap-tag">异常 / 中断</span>
       </div>
     </div>
 
@@ -411,20 +397,10 @@ function toggleLegend() {
 .dp-svg { display: block; width: 100%; height: 100%; font-family: Inter, "Microsoft YaHei", sans-serif; cursor: grab; touch-action: none; }
 .dp-svg.dragging { cursor: grabbing; }
 
-/* 缩放条和状态条共同参与排版，窄窗口换行，空白区域仍可操作图。 */
+/* 缩放条置于图区顶部，空白区域仍可操作图。 */
 .dp-toolbar { position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; pointer-events: none; }
 
 .toolbar-pill { min-height: 34px; box-sizing: border-box; min-width: 0; max-width: 100%; display: flex; gap: 9px; align-items: center; padding: 5px 14px; border: 1px solid #cbd5e1; border-radius: 999px; background: #ffffff; color: #334155; font-size: 12px; white-space: nowrap; }
-.status-pill { justify-self: center; overflow: hidden; pointer-events: none; }
-.status-pill { max-width: 100%; }
-.instruction-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.status-pill .sep { color: #64748b; }
-.mono { font-family: Consolas, monospace; }
-.strong { color: #1d4ed8; }
-.trap-tag { padding: 1px 8px; border-radius: 999px; background: #dc2626; color: #fff; font-weight: 700; }
-.wave-tag { font-family: Consolas, monospace; color: #1d4ed8; }
-.wave-tag em { font-style: normal; color: #15803d; }
-
 .zoom-bar { pointer-events: auto; }
 .zoom-label, .zoom-value { flex-shrink: 0; color: #334155; font-size: 12px; font-weight: 700; }
 .zoom-slider { width: clamp(70px, 14vw, 140px); }

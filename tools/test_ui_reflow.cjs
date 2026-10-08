@@ -27,7 +27,7 @@ async function open(width = 1600, height = 900) {
   const page = await context.newPage()
   page.on('pageerror', e => errors.push(String(e)))
   await page.goto('http://localhost:19081', { waitUntil: 'networkidle' })
-  await page.getByText('后端已连接', { exact: true }).waitFor()
+  await page.getByText('已连接', { exact: true }).waitFor()
   return { page, context }
 }
 async function check(name, fn) {

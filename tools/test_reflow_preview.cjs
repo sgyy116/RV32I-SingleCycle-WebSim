@@ -12,12 +12,12 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1312, height: 1106 } })
   page.on('pageerror', e => errors.push(String(e)))
   await page.goto(process.env.REFLOW_PREVIEW_URL || 'http://127.0.0.1:5175/', { waitUntil: 'networkidle' })
-  await page.getByText('后端已连接', { exact: true }).waitFor()
+  await page.getByText('已连接', { exact: true }).waitFor()
   // 变异只注入到本测试页，用同一判据确认能抓住校徽尺寸回退。
   if (process.env.REFLOW_HEADER_MUTATION === '1') {
     await page.addStyleTag({ content: '.app-header img { width: 474px !important; height: 474px !important; }' })
   }
-  for (const [width, height] of [[1312,1106],[1920,1080],[1024,768],[360,740]]) {
+  for (const [width, height] of [[1312,1106],[1920,1080],[1024,768],[538,740],[390,740],[360,740]]) {
     await page.setViewportSize({ width, height })
     const m = await page.locator('.app-header').evaluate(el => {
       const logo = el.querySelector('img').getBoundingClientRect()
@@ -32,16 +32,44 @@ async function main() {
     })
     assert.equal(m.logoWidth, 32, '校徽未被限制在 32px，预览可能缺少工具样式')
     assert.equal(m.logoHeight, 32)
-    assert.equal(m.display, 'flex', '顶栏布局样式缺失')
+    assert.equal(m.display, width <= 600 ? 'grid' : 'flex', '顶栏布局样式缺失')
     assert.equal(m.background, 'rgb(51, 65, 85)', '顶栏背景样式缺失')
-    assert(m.height <= (width <= 480 ? 200 : 120), '顶栏高度异常')
+    assert(m.height <= (width <= 600 ? 160 : 120), '顶栏高度异常')
     assert(m.buttons.length >= 8, '顶部控制按钮缺失')
     assert(m.buttons.every(b => b.height === 32 && ['inline-flex', 'flex'].includes(b.display) && b.visible), `按钮样式或操作区域异常 ${JSON.stringify(m.buttons)}`)
     await page.screenshot({ path: path.join(out, `preview-header-${width}.png`) })
-    results.push({ name: `${width}x${height} 工具栏样式`, passed: true })
+    if (width <= 600) {
+      const run = await page.getByRole('button', { name: '运行', exact: true }).boundingBox()
+      const pause = await page.getByRole('button', { name: '暂停', exact: true }).boundingBox()
+      const reset = await page.getByRole('button', { name: '复位', exact: true }).boundingBox()
+      const glossary = await page.locator('.header-glossary').boundingBox()
+      assert(pause.y >= run.y + run.height && pause.y === reset.y && reset.y === glossary.y, '暂停、复位、词典没有固定在第二行')
+      assert.equal(await page.locator('.app-header button svg:visible').count(), 0, '窄屏按钮仍显示图标')
+    }
+    const f = await page.locator('.app-footer').evaluate(el => {
+      const r = el.getBoundingClientRect()
+      return { bottom: r.bottom, overflow: el.scrollWidth > el.clientWidth, summary: el.querySelector('.footer-summary').getBoundingClientRect().top,
+        execution: el.querySelector('.footer-execution').getBoundingClientRect().top }
+    })
+    assert(Math.abs(f.bottom - height) < 1 && !f.overflow, '底栏未贴底或出现横向溢出')
+    if (width <= 900) assert(f.execution > f.summary, '窄屏底栏未分成两行')
+    results.push({ name: `${width}x${height} 工具栏分组与统一底栏`, passed: true })
   }
-  await page.setViewportSize({ width: 1312, height: 1106 })
-  await page.locator('.app-header > button').click()
+  const checkUnique = async () => {
+    assert.equal(await page.locator('.status-pill').count(), 0, '图区存在重复执行状态')
+    assert.equal(await page.locator('.footer-cycle').count(), 1, '周期信息必须只显示一次')
+    assert.equal(await page.locator('.footer-pc').count(), 1)
+    assert.equal(await page.locator('.footer-instruction').count(), 1)
+  }
+  await checkUnique()
+  // 注入重复状态条，用同一判据验证去重检查确实有效；随后删除临时节点。
+  await page.evaluate(() => { const el = document.createElement('div'); el.className = 'status-pill'; document.querySelector('.dp-toolbar').append(el) })
+  await assert.rejects(checkUnique, /图区存在重复执行状态/)
+  await page.locator('.status-pill').evaluate(el => el.remove())
+  await checkUnique()
+  assert.equal(await page.locator('.footer-connection').getAttribute('title'), 'ws://localhost:18880')
+  await page.setViewportSize({ width: 360, height: 740 })
+  await page.locator('.header-glossary').click()
   await page.getByRole('button', { name: '关闭（ESC）', exact: true }).waitFor()
   await page.getByRole('button', { name: '关闭（ESC）', exact: true }).click()
   await page.evaluate(async () => {
@@ -54,6 +82,8 @@ async function main() {
     const stores = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s
     return stores.get('simulator').stateHistory.length === 1 && !stores.get('wave').playing
   })
+  assert.equal(await page.locator('.footer-instruction').innerText(), 'addi a0, zero, 5')
+  assert((await page.locator('.footer-wave').innerText()).includes('波'), '波次信息迁移后丢失')
   await page.getByRole('button', { name: '复位', exact: true }).click()
   await page.waitForFunction(() => document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator').stateHistory.length === 0)
   results.push({ name: '工具栏词典、真实单条执行与复位可点击', passed: true })

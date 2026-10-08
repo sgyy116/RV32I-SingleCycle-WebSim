@@ -33,7 +33,7 @@ async function open(width = 1920, height = 1080) {
   page.on('websocket', socket => { page.backendSocket = socket })
   page.on('pageerror', e => errors.push(String(e)))
   await page.goto('http://localhost:18081', { waitUntil: 'networkidle' })
-  await page.getByText('后端已连接', { exact: true }).waitFor()
+  await page.getByText('已连接', { exact: true }).waitFor()
   return { page, context }
 }
 async function check(name, body) {
@@ -136,18 +136,19 @@ async function main() {
     await p.getByRole('button', { name: '1:1', exact: true }).click()
     assert.equal(await svg.getAttribute('viewBox'), original)
   })
-  await check('工具条统一与画布背景一致', async p => {
+  await check('图区只保留白色圆角缩放条，与画布背景一致', async p => {
     const style = await p.evaluate(() => {
-      const a = getComputedStyle(document.querySelector('.zoom-bar')), b = getComputedStyle(document.querySelector('.status-pill'))
+      const a = getComputedStyle(document.querySelector('.zoom-bar'))
       const rect = document.querySelector('.dp-svg > rect') || document.querySelector('.dp-svg > g > rect')
-      return { a: [a.backgroundColor, a.borderRadius, a.color], b: [b.backgroundColor, b.borderRadius, b.color],
+      return { a: [a.backgroundColor, a.borderRadius, a.color],
         wrap: getComputedStyle(document.querySelector('.dp-wrap')).backgroundColor, svg: getComputedStyle(rect).fill }
     })
-    assert.deepEqual(style.a, style.b, '缩放和周期栏视觉规范不同')
+    assert.equal(await p.locator('.status-pill').count(), 0, '图区仍存在重复周期条')
+    assert.equal(await p.locator('.footer-cycle').count(), 1, '底栏缺少唯一周期信息')
     assert.equal(style.a[0], 'rgb(255, 255, 255)', '工具条不是白底')
     const checkRound = async () => {
       const radii = await p.locator('.toolbar-pill').evaluateAll(els => els.map(el => parseFloat(getComputedStyle(el).borderRadius)))
-      assert(radii.length === 2 && radii.every(r => r >= 17), '工具条不是两端圆润的圆角框')
+      assert(radii.length === 1 && radii.every(r => r >= 17), '工具条不是两端圆润的圆角框')
     }
     await checkRound()
     // 在真实页面临时注入直角样式；同一检查必须失败，移除后恢复，源码不变。
