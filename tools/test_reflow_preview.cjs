@@ -17,6 +17,10 @@ async function main() {
   if (process.env.REFLOW_HEADER_MUTATION === '1') {
     await page.addStyleTag({ content: '.app-header img { width: 474px !important; height: 474px !important; }' })
   }
+  const checkZoomLocation = async () => {
+    assert.equal(await page.locator('.app-footer .zoom-bar').count(), 1, '缩放控件未放入底栏')
+    assert.equal(await page.locator('.dp-wrap .zoom-bar').count(), 0, '图区仍残留缩放控件')
+  }
   for (const [width, height] of [[1312,1106],[1920,1080],[1024,768],[538,740],[390,740],[360,740]]) {
     await page.setViewportSize({ width, height })
     const m = await page.locator('.app-header').evaluate(el => {
@@ -46,6 +50,10 @@ async function main() {
       assert(pause.y >= run.y + run.height && pause.y === reset.y && reset.y === glossary.y, '暂停、复位、词典没有固定在第二行')
       assert.equal(await page.locator('.app-header button svg:visible').count(), 0, '窄屏按钮仍显示图标')
     }
+    await checkZoomLocation()
+    const z = await page.locator('.zoom-bar').boundingBox()
+    const footer = await page.locator('.app-footer').boundingBox()
+    assert(z.x >= 0 && z.x + z.width <= width && z.y >= footer.y && z.y + z.height <= footer.y + footer.height, '缩放控件被裁切或脱离底栏')
     const f = await page.locator('.app-footer').evaluate(el => {
       const r = el.getBoundingClientRect()
       return { bottom: r.bottom, overflow: el.scrollWidth > el.clientWidth, summary: el.querySelector('.footer-summary').getBoundingClientRect().top,
@@ -63,10 +71,26 @@ async function main() {
   }
   await checkUnique()
   // 注入重复状态条，用同一判据验证去重检查确实有效；随后删除临时节点。
-  await page.evaluate(() => { const el = document.createElement('div'); el.className = 'status-pill'; document.querySelector('.dp-toolbar').append(el) })
+  await page.evaluate(() => { const el = document.createElement('div'); el.className = 'status-pill'; document.querySelector('.dp-wrap').append(el) })
   await assert.rejects(checkUnique, /图区存在重复执行状态/)
   await page.locator('.status-pill').evaluate(el => el.remove())
   await checkUnique()
+  // 把实际缩放控件临时移回图区，确认位置检查会失败；随后按原 DOM 位置恢复。
+  await page.evaluate(() => {
+    const bar = document.querySelector('.zoom-bar')
+    window.__zoomParent = bar.parentNode; window.__zoomNext = bar.nextSibling
+    document.querySelector('.dp-wrap').append(bar)
+  })
+  await assert.rejects(checkZoomLocation, /缩放控件未放入底栏/)
+  await page.evaluate(() => window.__zoomParent.insertBefore(document.querySelector('.zoom-bar'), window.__zoomNext))
+  await checkZoomLocation()
+  const initialView = await page.locator('.dp-svg').getAttribute('viewBox')
+  await page.locator('.zoom-bar [role="slider"]').focus()
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight')
+  await page.waitForFunction(() => document.querySelector('.zoom-value').textContent.trim() === '1.25×')
+  assert.notEqual(await page.locator('.dp-svg').getAttribute('viewBox'), initialView, '底栏缩放没有更新图形')
+  await page.getByRole('button', { name: '1:1', exact: true }).click()
+  assert.equal(await page.locator('.dp-svg').getAttribute('viewBox'), initialView, '底栏 1:1 未恢复原视角')
   assert.equal(await page.locator('.footer-connection').getAttribute('title'), 'ws://localhost:18880')
   await page.setViewportSize({ width: 360, height: 740 })
   await page.locator('.header-glossary').click()

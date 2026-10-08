@@ -136,13 +136,15 @@ async function main() {
     await p.getByRole('button', { name: '1:1', exact: true }).click()
     assert.equal(await svg.getAttribute('viewBox'), original)
   })
-  await check('图区只保留白色圆角缩放条，与画布背景一致', async p => {
+  await check('缩放条移到底栏并保留白色圆角，画布背景一致', async p => {
     const style = await p.evaluate(() => {
       const a = getComputedStyle(document.querySelector('.zoom-bar'))
       const rect = document.querySelector('.dp-svg > rect') || document.querySelector('.dp-svg > g > rect')
       return { a: [a.backgroundColor, a.borderRadius, a.color],
         wrap: getComputedStyle(document.querySelector('.dp-wrap')).backgroundColor, svg: getComputedStyle(rect).fill }
     })
+    assert.equal(await p.locator('.app-footer .zoom-bar').count(), 1, '缩放条未放入底栏')
+    assert.equal(await p.locator('.dp-wrap .zoom-bar').count(), 0, '图区仍有缩放条')
     assert.equal(await p.locator('.status-pill').count(), 0, '图区仍存在重复周期条')
     assert.equal(await p.locator('.footer-cycle').count(), 1, '底栏缺少唯一周期信息')
     assert.equal(style.a[0], 'rgb(255, 255, 255)', '工具条不是白底')

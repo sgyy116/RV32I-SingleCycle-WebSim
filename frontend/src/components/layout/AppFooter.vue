@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { NConfigProvider, NSlider } from 'naive-ui'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
 
+defineProps<{ zoom: number; zoomMin: number; zoomMax: number }>()
+const emit = defineEmits<{ 'update:zoom': [value: number]; 'reset-view': [] }>()
+const zoomTheme = {
+  Slider: { fillColor: '#2563eb', fillColorHover: '#3b82f6', railColor: '#cbd5e1',
+    railColorHover: '#94a3b8', handleColor: '#ffffff' },
+}
 const sim = useSimulatorStore()
 const wave = useWaveStore()
 const footerEl = ref<HTMLElement | null>(null)
@@ -21,6 +28,15 @@ onUnmounted(() => heightObserver?.disconnect())
 <template>
   <!-- 执行位置只显示一次；所有工作区视图共用底栏。 -->
   <footer ref="footerEl" class="app-footer shrink-0 bg-slate-900 text-slate-300 border-t border-slate-600">
+    <div class="zoom-bar toolbar-pill">
+      <span class="zoom-label">缩放</span>
+      <n-config-provider abstract :theme-overrides="zoomTheme">
+        <n-slider class="zoom-slider" :value="zoom" :min="zoomMin" :max="zoomMax" :step="0.05" :tooltip="false"
+          @update:value="emit('update:zoom', $event as number)" />
+      </n-config-provider>
+      <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
+      <button type="button" @click="emit('reset-view')">1:1</button>
+    </div>
     <div class="footer-summary">
       <span class="footer-connection" :title="sim.connectionUrl">
         <span class="connection-dot" :class="sim.connected ? 'bg-green-500' : 'bg-red-500'"></span>
@@ -55,9 +71,21 @@ onUnmounted(() => heightObserver?.disconnect())
 .footer-instruction { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #93c5fd; }
 .footer-wave { display: flex; align-items: center; gap: 8px; flex-shrink: 0; white-space: nowrap; }
 .trap-tag { padding: 1px 6px; border-radius: 6px; background: #dc2626; color: white; }
+/* 缩放控件属于全局底栏，沿用白底圆角，图区不再有悬浮工具条。 */
+.zoom-bar { min-height: 30px; flex-shrink: 0; display: flex; gap: 8px; align-items: center; padding: 3px 10px; border: 1px solid #cbd5e1; border-radius: 999px; background: white; color: #334155; }
+.zoom-label, .zoom-value { flex-shrink: 0; font-weight: 700; }
+.zoom-slider { width: clamp(64px, 8vw, 120px); }
+.zoom-bar button { padding: 2px 7px; border: 1px solid #94a3b8; background: white; color: #334155; cursor: pointer; }
+.zoom-bar button:hover { border-color: #2563eb; color: #1d4ed8; }
+.zoom-bar button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+@media (max-width: 1200px) {
+  .app-footer { flex-wrap: wrap; }
+}
 @media (max-width: 900px) {
   .app-footer { flex-wrap: wrap; gap: 4px 12px; padding-inline: 12px; }
-  .footer-summary { flex: 1 0 100%; }
+  .footer-summary { flex: 1 1 100%; }
+  .zoom-bar { order: 3; }
+  .footer-wave { order: 2; }
   .footer-execution { flex: 1 1 100%; justify-content: flex-start; }
 }
 </style>

@@ -15,7 +15,6 @@
 // ============================================================================
 
 import { computed, onUnmounted, reactive, ref } from 'vue'
-import { NConfigProvider, NSlider } from 'naive-ui'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
@@ -46,10 +45,6 @@ const svgEl = ref<SVGSVGElement | null>(null)
 const view = reactive({ x: 0, y: 0, w: scene.width, h: scene.height })
 const ZOOM_MIN = 0.6
 const ZOOM_MAX = 3
-const zoomTheme = {
-  Slider: { fillColor: '#2563eb', fillColorHover: '#3b82f6', railColor: '#cbd5e1',
-    railColorHover: '#94a3b8', handleColor: '#ffffff' },
-}
 
 function resetView() {
   view.x = 0
@@ -91,6 +86,9 @@ function setZoom(value: number | [number, number], anchor?: { x: number; y: numb
   view.w = nw
   view.h = scene.height * (nw / scene.width)
 }
+
+// 底栏调用同一缩放实现，滚轮、滑条与复位共享视角。
+defineExpose({ zoom, zoomMin: ZOOM_MIN, zoomMax: ZOOM_MAX, setZoom, resetView })
 
 function onWheel(ev: WheelEvent) {
   const p = toSvg(ev.clientX, ev.clientY)
@@ -293,20 +291,6 @@ function toggleLegend() {
 
 <template>
   <div class="dp-wrap" :style="{ background: scene.background }">
-    <!-- 图区只保留缩放工具，执行状态统一显示在底栏。 -->
-    <div class="dp-toolbar">
-      <!-- 缩放控制 -->
-      <div class="zoom-bar toolbar-pill">
-        <span class="zoom-label">缩放</span>
-        <n-config-provider abstract :theme-overrides="zoomTheme">
-        <n-slider class="zoom-slider" :value="zoom" :min="ZOOM_MIN" :max="ZOOM_MAX"
-          :step="0.05" :tooltip="false" @update:value="setZoom" />
-        </n-config-provider>
-        <span class="zoom-value">{{ zoom.toFixed(2) }}×</span>
-        <button type="button" @click="resetView">1:1</button>
-      </div>
-    </div>
-
     <!-- 图例。两行：上面是「线传的是什么」，下面是「高亮表示什么」。
          上面那一行的色块**全部由 WIRE_KINDS 渲染**，本组件里不出现任何 hex ——
          图例和图上画的线读的是同一张表，所以不可能出现「图例说蓝、图上画绿」。
@@ -396,16 +380,6 @@ function toggleLegend() {
 .dp-wrap { position: relative; width: 100%; height: 100%; overflow: hidden; background: #f8fafc; }
 .dp-svg { display: block; width: 100%; height: 100%; font-family: Inter, "Microsoft YaHei", sans-serif; cursor: grab; touch-action: none; }
 .dp-svg.dragging { cursor: grabbing; }
-
-/* 缩放条置于图区顶部，空白区域仍可操作图。 */
-.dp-toolbar { position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; pointer-events: none; }
-
-.toolbar-pill { min-height: 34px; box-sizing: border-box; min-width: 0; max-width: 100%; display: flex; gap: 9px; align-items: center; padding: 5px 14px; border: 1px solid #cbd5e1; border-radius: 999px; background: #ffffff; color: #334155; font-size: 12px; white-space: nowrap; }
-.zoom-bar { pointer-events: auto; }
-.zoom-label, .zoom-value { flex-shrink: 0; color: #334155; font-size: 12px; font-weight: 700; }
-.zoom-slider { width: clamp(70px, 14vw, 140px); }
-.zoom-bar button { pointer-events: auto; padding: 2px 9px; border: 1px solid #94a3b8; border-radius: 0; background: #ffffff; color: #334155; font-size: 12px; cursor: pointer; }
-.zoom-bar button:hover { border-color: #2563eb; color: #1d4ed8; }
 
 /* 图例：两行，窄屏自动换行。整块保持 pointer-events:none —— 它压在图上，
    开 auto 会挡住左下角的平移与连线悬停。只有折叠按钮和色块单独开。 */

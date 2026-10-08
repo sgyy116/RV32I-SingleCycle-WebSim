@@ -18,6 +18,7 @@ import { resolveWorkspaceMode, type WorkspacePanel } from '@/utils/workspaceLayo
 const layout = useLayoutStore()
 const viewportEl = ref<HTMLElement | null>(null)
 const scrollEl = ref<HTMLElement | null>(null)
+const datapathRef = ref<InstanceType<typeof DatapathView> | null>(null)
 const panels: { key: WorkspacePanel; label: string }[] = [
   { key: 'datapath', label: '数据通路' },
   { key: 'editor', label: '汇编代码' },
@@ -103,7 +104,7 @@ const themeOverrides: GlobalThemeOverrides = {
               :class="{ 'workspace-hidden': layout.mode === 'single' && layout.activePanel !== 'datapath' }"
               :inert="layout.mode === 'single' && layout.activePanel !== 'datapath'"
               :aria-hidden="layout.mode === 'single' && layout.activePanel !== 'datapath'">
-              <DatapathView />
+              <DatapathView ref="datapathRef" />
             </main>
 
             <!-- 右侧：指令信号 / 寄存器 / 内存 / 波形。
@@ -164,7 +165,8 @@ const themeOverrides: GlobalThemeOverrides = {
       </div>
 
       <!-- 底部状态栏 -->
-      <AppFooter />
+      <AppFooter :zoom="datapathRef?.zoom ?? 1" :zoom-min="datapathRef?.zoomMin ?? 1" :zoom-max="datapathRef?.zoomMax ?? 1"
+        @update:zoom="datapathRef?.setZoom($event)" @reset-view="datapathRef?.resetView()" />
     </div>
 
     <!-- 百科全书：常驻右侧的浮层，盖在右侧标签栏上。
