@@ -115,6 +115,26 @@ async function main() {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.locator('.lg-toggle[title="展开图例"]').waitFor()
   results.push({ name: '图例按图区宽度自动收起，手动展开不额外换行', passed: true })
+  const checkLegendDefault = async open => assert.equal(await page.locator('.legend').evaluate(el => el.classList.contains('is-open')), open, '图例默认展开状态不符')
+  // 每种布局首次打开页面的默认状态，以及往返切换后的恢复状态。
+  for (const [width, height, mode, open] of [[1920,1080,'wide',true],[1200,1100,'stacked',false],[600,900,'single',false]]) {
+    await page.setViewportSize({ width, height })
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForFunction(({mode,open}) => document.querySelector('.workspace-grid').classList.contains(`is-${mode}`)
+      && document.querySelector('.legend').classList.contains('is-open') === open, { mode, open })
+  }
+  await page.locator('.legend').evaluate(el => el.classList.add('is-open'))
+  await assert.rejects(() => checkLegendDefault(false), /图例默认展开状态不符/)
+  await page.locator('.legend').evaluate(el => el.classList.remove('is-open'))
+  await checkLegendDefault(false)
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.locator('.lg-toggle[title="收起图例"]').waitFor()
+  await page.locator('.lg-toggle').click()
+  await page.setViewportSize({ width: 1200, height: 1100 })
+  await page.locator('.lg-toggle[title="展开图例"]').waitFor()
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.locator('.lg-toggle[title="收起图例"]').waitFor()
+  results.push({ name: '图例首次打开及模式往返：三栏展开，上下和单视图收起', passed: true })
   const checkUnique = async () => {
     assert.equal(await page.locator('.status-pill').count(), 0, '图区存在重复执行状态')
     assert.equal(await page.locator('.footer-cycle').count(), 1, '周期信息必须只显示一次')

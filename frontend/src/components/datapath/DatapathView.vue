@@ -14,11 +14,12 @@
 // wave.shown 就是「本波为止该亮的东西」，本组件只管画。
 // ============================================================================
 
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
 import { useGlossaryStore } from '@/stores/glossary'
+import { useLayoutStore } from '@/stores/layout'
 import { buildDatapathScene, type DatapathLayout, type SceneMeta } from '@/data/datapathScene'
 import { WIRE_KINDS, wireKindLabel } from '@/data/datapathPalette'
 import layoutJson from '@/data/datapathLayout.json'
@@ -27,6 +28,7 @@ import SceneNode from './SceneNode.vue'
 const sim = useSimulatorStore()
 const wave = useWaveStore()
 const glossary = useGlossaryStore()
+const workspace = useLayoutStore()
 const st = computed(() => sim.cycleState)
 
 // 布局是常量，场景树只建一次；故意不做成响应式——两千多个节点被 Vue 代理化纯属浪费，
@@ -278,8 +280,13 @@ function measureLegend() {
   const required = Math.max(...[...legendContent.value.querySelectorAll('.lg-row')].map(el => el.scrollWidth))
   // 按图区实际宽度判断：用户曾展开过，变窄到需要换行时仍自动收起。
   if (required > available) legendOpen.value = false
-  else if (!legendTouched) legendOpen.value = true
+  else if (!legendTouched) legendOpen.value = workspace.mode === 'wide'
 }
+// 切换工作区形态后恢复该形态的默认值；同一形态内允许手动展开或收起。
+watch(() => workspace.mode, () => {
+  legendTouched = false
+  measureLegend()
+}, { flush: 'post' })
 onMounted(() => {
   measureLegend()
   legendObserver = new ResizeObserver(measureLegend)
