@@ -29,7 +29,7 @@ let resizeFrame = 0
 function updateWorkspace() {
   if (!viewportEl.value) return
   // 测外层宽度，内部出现滚动条不会反过来改变布局判据。
-  const next = resolveWorkspaceMode(viewportEl.value.getBoundingClientRect().width, layout.mode)
+  const next = resolveWorkspaceMode(viewportEl.value.getBoundingClientRect().width, window.innerHeight, layout.mode)
   if (next === 'single' && layout.mode !== 'single') {
     // 正在编辑或查看状态时拖窄窗口，继续显示用户正在操作的工作区。
     const focused = document.activeElement

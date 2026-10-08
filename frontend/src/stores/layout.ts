@@ -6,7 +6,7 @@
 // （同一个理由见 glossary.ts 开头的说明。）
 //
 // 宽屏三栏、较窄窗口上下两层、窄屏单列。布局模式不写入持久化偏好，
-// 浏览器窗口与缩放后的有效宽度决定模式；宽屏折叠偏好继续独立保留。
+// 浏览器窗口与缩放后的有效宽高比和宽度决定模式；宽屏折叠偏好继续独立保留。
 //
 // 折叠的形态约束：**不能**用 display:none / v-show。CodeMirror 在 display:none
 // 的容器里量到的高度是 0，再展开时可能整片白。当前收起时用 visibility 和
@@ -50,7 +50,7 @@ function initial(pref: boolean | null): boolean {
 }
 
 export const useLayoutStore = defineStore('layout', () => {
-  const mode = ref<WorkspaceMode>(resolveWorkspaceMode(window.innerWidth))
+  const mode = ref<WorkspaceMode>(resolveWorkspaceMode(window.innerWidth, window.innerHeight))
   const activePanel = ref<WorkspacePanel>('datapath')
   const leftCollapsed = ref(initial(read(LEFT_KEY)))
   const rightCollapsed = ref(initial(read(RIGHT_KEY)))

@@ -28,6 +28,7 @@ onUnmounted(() => heightObserver?.disconnect())
 <template>
   <!-- 执行位置只显示一次；所有工作区视图共用底栏。 -->
   <footer ref="footerEl" class="app-footer shrink-0 bg-slate-900 text-slate-300 border-t border-slate-600">
+    <div class="footer-controls">
     <div class="zoom-bar toolbar-pill">
       <span class="zoom-label">缩放</span>
       <n-config-provider abstract :theme-overrides="zoomTheme">
@@ -47,6 +48,8 @@ onUnmounted(() => heightObserver?.disconnect())
         {{ wave.playing ? '运行中' : sim.statusText }}
       </span>
     </div>
+    </div>
+    <div class="footer-position">
     <div class="footer-execution">
       <span class="footer-cycle">周期 #{{ sim.cycleCount }}</span>
       <span class="footer-pc">PC {{ sim.cycleState?.pc ?? sim.programEntry }}</span>
@@ -56,12 +59,14 @@ onUnmounted(() => heightObserver?.disconnect())
       <span v-if="wave.total > 0">第 {{ wave.waveNo }} / {{ wave.total }} 波</span>
       <span v-if="wave.shown.trapActive" class="trap-tag">异常 / 中断</span>
     </div>
+    </div>
   </footer>
 </template>
 
 <style scoped>
-.app-footer { min-height: calc(40px + env(safe-area-inset-bottom, 0px)); padding: 6px 16px calc(6px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; display: flex; align-items: center; gap: 8px 16px; font-size: 12px; }
-.footer-summary { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.app-footer { min-height: calc(40px + env(safe-area-inset-bottom, 0px)); padding: 6px 16px calc(6px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 6px 16px; font-size: 12px; }
+.footer-controls, .footer-position { display: flex; align-items: center; gap: 8px 16px; min-width: 0; }
+.footer-summary { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .footer-connection { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .connection-dot { width: 8px; height: 8px; border-radius: 50%; }
 .footer-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -78,14 +83,16 @@ onUnmounted(() => heightObserver?.disconnect())
 .zoom-bar button { padding: 2px 7px; border: 1px solid #94a3b8; background: white; color: #334155; cursor: pointer; }
 .zoom-bar button:hover { border-color: #2563eb; color: #1d4ed8; }
 .zoom-bar button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+/* 中等窗口固定两行，波次跟随执行信息，不独自挤出第三行。 */
 @media (max-width: 1200px) {
-  .app-footer { flex-wrap: wrap; }
+  .app-footer { grid-template-columns: minmax(0, 1fr); }
+  .footer-execution { justify-content: flex-start; }
 }
-@media (max-width: 900px) {
-  .app-footer { flex-wrap: wrap; gap: 4px 12px; padding-inline: 12px; }
+@media (max-width: 600px) {
+  .app-footer { padding-inline: 12px; }
+  .footer-controls { flex-wrap: wrap; gap: 4px 8px; }
   .footer-summary { flex: 1 1 100%; }
-  .zoom-bar { order: 3; }
-  .footer-wave { order: 2; }
-  .footer-execution { flex: 1 1 100%; justify-content: flex-start; }
+  .footer-position { flex-wrap: wrap; gap: 4px 8px; }
+  .footer-execution { flex: 1 1 100%; }
 }
 </style>

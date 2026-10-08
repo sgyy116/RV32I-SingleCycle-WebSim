@@ -21,7 +21,7 @@ async function main() {
     assert.equal(await page.locator('.app-footer .zoom-bar').count(), 1, '缩放控件未放入底栏')
     assert.equal(await page.locator('.dp-wrap .zoom-bar').count(), 0, '图区仍残留缩放控件')
   }
-  for (const [width, height] of [[1312,1106],[1920,1080],[1024,768],[538,740],[390,740],[360,740]]) {
+  for (const [width, height] of [[1312,1106],[1920,1080],[1024,768],[1280,800],[938,800],[774,800],[538,740],[390,740],[360,740]]) {
     await page.setViewportSize({ width, height })
     const m = await page.locator('.app-header').evaluate(el => {
       const logo = el.querySelector('img').getBoundingClientRect()
@@ -60,7 +60,7 @@ async function main() {
         execution: el.querySelector('.footer-execution').getBoundingClientRect().top }
     })
     assert(Math.abs(f.bottom - height) < 1 && !f.overflow, '底栏未贴底或出现横向溢出')
-    if (width <= 900) assert(f.execution > f.summary, '窄屏底栏未分成两行')
+    if (width <= 1200) assert(f.execution > f.summary, '窄屏底栏未分成两行')
     results.push({ name: `${width}x${height} 工具栏分组与统一底栏`, passed: true })
   }
   const checkUnique = async () => {
@@ -108,6 +108,13 @@ async function main() {
   })
   assert.equal(await page.locator('.footer-instruction').innerText(), 'addi a0, zero, 5')
   assert((await page.locator('.footer-wave').innerText()).includes('波'), '波次信息迁移后丢失')
+  await page.setViewportSize({ width: 774, height: 800 })
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+  const loadedFooter = await page.locator('.app-footer').evaluate(el => ({ height: el.getBoundingClientRect().height,
+    execution: el.querySelector('.footer-execution').getBoundingClientRect().top,
+    wave: el.querySelector('.footer-wave').getBoundingClientRect().top }))
+  assert(loadedFooter.height <= 72 && Math.abs(loadedFooter.execution - loadedFooter.wave) < 2, '波次被挤到第三行')
+  await page.screenshot({ path: path.join(out, 'footer-loaded-774.png') })
   await page.getByRole('button', { name: '复位', exact: true }).click()
   await page.waitForFunction(() => document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator').stateHistory.length === 0)
   results.push({ name: '工具栏词典、真实单条执行与复位可点击', passed: true })

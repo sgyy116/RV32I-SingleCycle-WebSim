@@ -66,13 +66,13 @@ async function main() {
   }
   browser = await chromium.launch({ executablePath: process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
   await check('临界宽度往返有缓冲且可直接跨越多个布局', async p => {
-    for (const [w, mode] of [[1360,'wide'],[1320,'wide'],[1319,'stacked'],[1330,'stacked'],[1370,'stacked'],[1399,'stacked'],[1400,'wide'],[800,'stacked'],[759,'single'],[770,'single'],[839,'single'],[840,'stacked'],[360,'single'],[1920,'wide']]) {
-      await resize(p, w, 900, mode)
+    for (const [w,h,mode] of [[1600,900,'wide'],[1200,900,'wide'],[1200,923,'wide'],[1200,924,'stacked'],[1200,900,'stacked'],[1200,883,'stacked'],[1200,882,'wide'],[960,600,'wide'],[959,600,'stacked'],[1039,600,'stacked'],[1040,600,'wide'],[759,900,'single'],[839,900,'single'],[840,900,'stacked'],[1920,1200,'wide'],[1408,1200,'stacked']]) {
+      await resize(p, w, h, mode)
     }
   })
   if (process.argv.includes('--probe')) return
   await check('不同宽高比按实际空间重排且底栏贴底', async p => {
-    for (const [w,h,mode] of [[1680,720,'wide'],[1440,810,'wide'],[1200,900,'stacked'],[1024,768,'stacked'],[900,500,'stacked'],[720,1280,'single'],[360,740,'single']]) {
+    for (const [w,h,mode] of [[1680,720,'wide'],[1440,810,'wide'],[1200,900,'wide'],[1024,768,'wide'],[900,500,'stacked'],[720,1280,'single'],[360,740,'single']]) {
       await resize(p, w, h, mode)
       const m = await geometry(p)
       assert(!m.overflow && m.clipped === 0, `窗口 ${w}x${h} 出现横向溢出或按钮裁切`)
@@ -86,7 +86,7 @@ async function main() {
       await p.screenshot({ path: path.join(out, `${w}x${h}.png`) })
     }
     // 给真实页面注入错误布局，验证上述几何判据能捕获上下重排失效。
-    await resize(p, 1200, 900, 'stacked')
+    await resize(p, 1200, 1000, 'stacked')
     const mutation = await p.addStyleTag({ content: '.is-stacked > .workspace-editor { grid-row: 1 !important; }' })
     const broken = await geometry(p)
     assert.throws(() => stacked(broken), '几何检查未捕获重排变异')
@@ -134,7 +134,7 @@ async function main() {
     await p.getByRole('button', { name: '汇编代码', exact: true }).click()
     await editor.press('Control+z')
     assert.equal(await editor.innerText(), before, '编辑撤销记录丢失')
-    await resize(p, 1200, 900, 'stacked')
+    await resize(p, 1200, 1000, 'stacked')
     assert(await editor.evaluate(e => e === window.__reflowEditor))
     await resize(p, 1600, 900, 'wide')
   })
@@ -152,7 +152,7 @@ async function main() {
     const before = await snapshot()
     assert.equal(JSON.parse(before).regfile[10], 5)
     assert.equal(JSON.parse(before).regfile[11], 12)
-    for (const [width,mode] of [[1200,'stacked'],[360,'single'],[1600,'wide']]) { await resize(p,width,900,mode); assert.equal(await snapshot(),before) }
+    for (const [width,mode] of [[1200,'wide'],[1000,'stacked'],[360,'single'],[1600,'wide']]) { await resize(p,width,900,mode); assert.equal(await snapshot(),before) }
     const svg = p.locator('.dp-svg')
     assert(await svg.evaluate(e => !e.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true }))))
     assert.equal(await p.locator('.dp-svg text').first().evaluate(e => getComputedStyle(e).userSelect), 'none')
