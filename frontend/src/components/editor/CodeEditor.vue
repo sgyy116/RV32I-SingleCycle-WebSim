@@ -18,6 +18,7 @@ const layout = useLayoutStore()
 
 const containerRef = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
+let sizeObserver: ResizeObserver | null = null
 const languageCompartment = new Compartment()
 
 function createEditor() {
@@ -54,16 +55,20 @@ function compileAndLoad() {
 
 onMounted(() => {
   createEditor()
+  // 同一个编辑器会从侧栏移到下方或单列；容器尺寸改变后重新测量。
+  sizeObserver = new ResizeObserver(() => view?.requestMeasure())
+  if (containerRef.value) sizeObserver.observe(containerRef.value)
 })
 
 onUnmounted(() => {
+  sizeObserver?.disconnect()
   view?.destroy()
   view = null
 })
 
 // 折叠不销毁编辑器；展开后重新测量，保留内容、撤销栈和光标。
-watch(() => layout.leftCollapsed, async (collapsed) => {
-  if (!collapsed) {
+watch(() => layout.editorVisible, async (visible) => {
+  if (visible) {
     await nextTick()
     view?.requestMeasure()
   }
@@ -88,7 +93,7 @@ watch(
     <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
       <n-select
         v-model:value="editor.currentExample"
-        class="flex-1"
+        class="flex-1 min-w-0"
         size="small"
         :options="EXAMPLE_OPTIONS"
         @update:value="editor.loadExample"
