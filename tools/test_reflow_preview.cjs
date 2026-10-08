@@ -27,7 +27,7 @@ async function main() {
       const logo = el.querySelector('img').getBoundingClientRect()
       const h = el.getBoundingClientRect()
       return { logoWidth: logo.width, logoHeight: logo.height, height: h.height,
-        display: getComputedStyle(el).display, background: getComputedStyle(el).backgroundColor,
+        mode: document.querySelector('.workspace-grid').className, display: getComputedStyle(el).display, background: getComputedStyle(el).backgroundColor,
         buttons: [...el.querySelectorAll('button')].map(b => {
           const r = b.getBoundingClientRect(), s = getComputedStyle(b)
           return { width: r.width, height: r.height, display: s.display,
@@ -36,7 +36,7 @@ async function main() {
     })
     assert.equal(m.logoWidth, 32, '校徽未被限制在 32px，预览可能缺少工具样式')
     assert.equal(m.logoHeight, 32)
-    assert.equal(m.display, width <= 600 ? 'grid' : 'flex', '顶栏布局样式缺失')
+    assert.equal(m.display, m.mode.includes('is-wide') ? 'flex' : 'grid', '顶栏布局样式缺失')
     assert.equal(m.background, 'rgb(51, 65, 85)', '顶栏背景样式缺失')
     assert(m.height <= (width <= 600 ? 160 : 120), '顶栏高度异常')
     assert(m.buttons.length >= 8, '顶部控制按钮缺失')
@@ -63,22 +63,37 @@ async function main() {
     if (width <= 1200) assert(f.execution > f.summary, '窄屏底栏未分成两行')
     results.push({ name: `${width}x${height} 工具栏分组与统一底栏`, passed: true })
   }
-  const checkSingleHeader = async () => {
-    assert.equal(await page.locator('.app-header').evaluate(el => el.getBoundingClientRect().height), 56, '平台名称导致顶栏中途换为两行')
+  const checkHeaderLayout = async () => {
+    const m = await page.locator('.app-header').evaluate(el => {
+      const box = sel => { const r = el.querySelector(sel).getBoundingClientRect(); return { y: r.y, height: r.height, bottom: r.bottom } }
+      return { wide: document.querySelector('.workspace-grid').classList.contains('is-wide'), height: el.offsetHeight,
+        controls: box('.primary-controls'), speed: box('.header-speed'), history: box('.header-history') }
+    })
+    if (m.wide) assert.equal(m.height, 56, '三栏布局的顶栏未保持单行')
+    else {
+      assert(m.speed.y >= m.controls.bottom, '速度条未随工作区模式下移')
+      assert(Math.abs(m.speed.y + m.speed.height / 2 - m.history.y - m.history.height / 2) < 1, '速度和历史按钮未同排')
+      assert(m.height >= 88 && m.height <= 90, '中等窗口出现额外换行')
+    }
   }
-  for (const width of [...Array.from({length:28}, (_,i) => 1500-i*20), ...Array.from({length:28}, (_,i) => 960+i*20)]) {
+  for (const width of [...Array.from({length:44}, (_,i) => 1500-i*20), ...Array.from({length:44}, (_,i) => 640+i*20)]) {
     await page.setViewportSize({ width, height: 800 })
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
-    await checkSingleHeader()
+    await checkHeaderLayout()
+  }
+  for (const height of [700,900,924,883,882,800]) {
+    await page.setViewportSize({ width: 1200, height })
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+    await checkHeaderLayout()
   }
   await page.setViewportSize({ width: 1000, height: 800 })
   await page.waitForTimeout(80)
-  const headerMutation = await page.addStyleTag({ content: '.header-name.is-concealed { position: static !important; visibility: visible !important; }' })
-  await assert.rejects(checkSingleHeader, /平台名称导致顶栏中途换为两行/)
+  const headerMutation = await page.addStyleTag({ content: '.header-mode-stacked .header-speed { grid-row: 1 !important; }' })
+  await assert.rejects(checkHeaderLayout, /速度条未随工作区模式下移/)
   await headerMutation.evaluate(el => el.remove())
   await page.waitForTimeout(80)
-  await checkSingleHeader()
-  results.push({ name: '平台名称提前隐藏，连续往返顶栏保持单行', passed: true })
+  await checkHeaderLayout()
+  results.push({ name: '速度和历史按钮跟随工作区模式同步换行，连续往返无中间状态', passed: true })
 
   await page.setViewportSize({ width: 1500, height: 800 })
   await page.waitForTimeout(80)
