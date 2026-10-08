@@ -163,7 +163,7 @@ async function main() {
   assert.notEqual(await page.locator('.dp-svg').getAttribute('viewBox'), initialView, '底栏缩放没有更新图形')
   await page.getByRole('button', { name: '1:1', exact: true }).click()
   assert.equal(await page.locator('.dp-svg').getAttribute('viewBox'), initialView, '底栏 1:1 未恢复原视角')
-  assert.equal(await page.locator('.footer-connection').getAttribute('title'), 'ws://localhost:18880')
+  assert.equal(await page.locator('.footer-connection').getAttribute('title'), process.env.REFLOW_EXPECTED_WS_URL || 'ws://localhost:18880')
   await page.setViewportSize({ width: 360, height: 740 })
   await page.locator('.header-glossary').click()
   await page.getByRole('button', { name: '关闭（ESC）', exact: true }).waitFor()
