@@ -383,7 +383,7 @@ function toggleLegend() {
       </g>
     </svg>
 
-    <div v-if="!sim.connected" class="disconnected">后端未连接：请启动 Python 中间层（端口 8080）。</div>
+    <div v-if="!sim.connected" class="disconnected">后端未连接：请检查服务器连接。</div>
   </div>
 </template>
 

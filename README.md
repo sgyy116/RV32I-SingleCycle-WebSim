@@ -2,10 +2,12 @@
 
 在浏览器中编写 RISC-V 汇编，观察指令执行、数据通路和寄存器变化。
 
-- **版本**：v1.5.0
+- **版本**：v1.5.1
 - **正式页面**：http://localhost:8081/
 - **主库**：[sgyy116/RV32I-SingleCycle-WebSim](https://github.com/sgyy116/RV32I-SingleCycle-WebSim)
-- **本地分支**：`release/v1.5.0`，尚未推送 GitHub
+- **发布标签**：`v1.5.1`
+
+Ubuntu 服务器对接与部署步骤见 [Ubuntu 服务器部署](docs/Ubuntu服务器部署.md)。前端在正式部署中通过同域名 `/ws` 连接后端，并自动按页面协议选择 `ws` 或 `wss`。
 
 ## 功能
 

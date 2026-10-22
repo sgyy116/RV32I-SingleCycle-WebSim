@@ -168,9 +168,9 @@ async def handle_index(request: web.Request) -> web.Response:
 def build_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
 
-    # 编译 API 与静态前端同源（都在本服务上），前端才可以用相对路径
-    # '/api/compile' 请求。放最前注册，老版本 aiohttp 上也能靠顺序保命。
-    app.router.add_post("/api/compile", handle_compile)
+    # HTTP 编译 API 仅供本地调试；服务器模式走 WebSocket 会话内编译。
+    if not config.SERVER_MODE:
+        app.router.add_post("/api/compile", handle_compile)
 
     # 前端预构建产物（frontend/dist）由本服务一并托管：交付形态只要一个进程、
     # 一个端口，用户不必安装 Node。dist 不存在时（纯开发模式，只跑 vite）静默
@@ -194,7 +194,7 @@ async def start_http_server(port: int):
     """启动 aiohttp 编译服务（并入调用方事件循环）。返回 AppRunner，供 cleanup。"""
     runner = web.AppRunner(build_app())
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
+    site = web.TCPSite(runner, config.BIND_HOST, port)
     await site.start()
     return runner
 

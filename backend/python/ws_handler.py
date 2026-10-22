@@ -56,6 +56,8 @@ class ConnectionHandler:
         # 复用已有桥接（重新加载）或新建
         if self.bridge is None:
             self.bridge = CppSimulatorBridge()
+        else:
+            await self.bridge.shutdown()
         try:
             resp = await self.bridge.start(self.elf_path)
         except FileNotFoundError as e:
@@ -98,6 +100,9 @@ class ConnectionHandler:
 
         elif mtype == "load_elf":
             # 直接加载已存在的 ELF 路径（测试/调试用）
+            if compile_server.config.SERVER_MODE:
+                await self.send_error("服务器模式不允许按文件路径加载")
+                return
             path = msg.get("path")
             if not path:
                 await self.send_error("缺少 path")

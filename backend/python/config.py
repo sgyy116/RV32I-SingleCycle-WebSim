@@ -20,6 +20,8 @@ COMPILE_OUTPUT_DIR = Path(tempfile.gettempdir()) / "rv32i-compile"
 # 端口
 WEBSOCKET_PORT = int(os.environ.get("WS_PORT", 8080))
 COMPILE_PORT = int(os.environ.get("COMPILE_PORT", 8081))
+BIND_HOST = os.environ.get("RV32I_BIND_HOST", "0.0.0.0")
+SERVER_MODE = os.environ.get("RV32I_SERVER_MODE", "0") == "1"
 
 # 模拟器可执行文件路径（按平台选择；build 里可能残留旧版的 Linux 可执行文件）
 SIM_PATH = os.environ.get("RV32I_SIM_PATH")

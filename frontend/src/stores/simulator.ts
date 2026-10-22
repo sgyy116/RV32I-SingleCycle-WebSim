@@ -9,10 +9,10 @@ import { ref, computed } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import type { CycleState, DisassemblyEntry, SimStatus, WsMessage } from '@/types/simulation'
 
-// 默认直连后端 WebSocket（ws://hostname:8080）；也可通过 VITE_WS_URL 覆盖
+// 与页面同源，由开发代理或服务器反向代理将 /ws 转给 Python 后端。
 const WS_URL =
-  (import.meta.env.VITE_WS_URL as string) || `ws://${location.hostname}:8080`
-const COMPILE_URL = '/api/compile'
+  (import.meta.env.VITE_WS_URL as string) ||
+  `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
 
 export const useSimulatorStore = defineStore('simulator', () => {
   // ---------------- 连接状态 ----------------
@@ -52,6 +52,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
     },
     onClose: () => {
       connected.value = false
+      if (compiling.value) {
+        compiling.value = false
+        compileStatus.value = 'error'
+        compileErrors.value = ['连接中断，请重试']
+      }
       statusText.value = '连接断开，正在重连…'
     },
   })
@@ -80,6 +85,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
         statusText.value = '已暂停'
         break
       case 'loaded':
+        compiling.value = false
+        compileStatus.value = 'success'
         status.value = 'idle'
         statusText.value = `程序已加载 entry=${msg.entry}`
         programEntry.value = msg.entry ?? '0x80000000'
@@ -91,6 +98,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
         ws.send({ type: 'get_disassembly', addr: programEntry.value, count: 256 })
         break
       case 'error':
+        if (compiling.value) {
+          compiling.value = false
+          compileStatus.value = 'error'
+          compileErrors.value = [msg.message ?? '编译失败']
+        }
         // 缺少程序是操作前置提示，不是执行故障；其他错误不能被这一提示掩盖。
         if (msg.message === '尚未加载程序' || msg.message === '未加载程序') {
           status.value = 'idle'
@@ -149,36 +161,23 @@ export const useSimulatorStore = defineStore('simulator', () => {
     compileErrors.value = []
     statusText.value = '正在编译…'
     try {
-      const resp = await fetch(COMPILE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source }),
-      })
-      const data = await resp.json()
-      if (!data.success) {
+      // 每个连接在自己的临时目录中编译，浏览器无需接触服务器文件路径。
+      if (!ws.send({ type: 'load', source })) {
+        compiling.value = false
         compileStatus.value = 'error'
-        compileErrors.value = data.errors ?? ['编译失败']
-        status.value = 'error'
-        statusText.value = '编译失败'
-        return false
-      }
-      compileStatus.value = 'success'
-      // 通过 WebSocket 加载到模拟器
-      const sent = ws.send({ type: 'load_elf', path: data.elf_path })
-      if (!sent) {
+        compileErrors.value = ['WebSocket 未连接']
         status.value = 'error'
         statusText.value = 'WebSocket 未连接'
         return false
       }
       return true
     } catch (e) {
+      compiling.value = false
       compileStatus.value = 'error'
       compileErrors.value = [String(e)]
       status.value = 'error'
       statusText.value = '编译请求失败'
       return false
-    } finally {
-      compiling.value = false
     }
   }
 

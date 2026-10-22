@@ -17,6 +17,7 @@
 import asyncio
 import json
 import logging
+import shutil
 import sys
 import tempfile
 import uuid
@@ -64,22 +65,23 @@ async def handle_connection(conn):
     finally:
         await handler.close()
         SESSIONS.pop(session_id, None)
+        shutil.rmtree(session_dir, ignore_errors=True)
         log.info("会话结束: %s", session_id)
 
 
 async def main():
     # 同一事件循环启动 aiohttp 编译服务
     runner = await start_http_server(config.COMPILE_PORT)
-    log.info("HTTP 编译服务已启动: http://localhost:%d", config.COMPILE_PORT)
+    log.info("HTTP 服务已启动: http://%s:%d", config.BIND_HOST, config.COMPILE_PORT)
 
     # 启动 WebSocket 服务器
     async with websockets.serve(
         handle_connection,
-        "0.0.0.0",
+        config.BIND_HOST,
         config.WEBSOCKET_PORT,
         max_size=4 * 1024 * 1024,
     ) as ws_server:
-        log.info("WebSocket 服务器已启动: ws://localhost:%d", config.WEBSOCKET_PORT)
+        log.info("WebSocket 服务器已启动: ws://%s:%d", config.BIND_HOST, config.WEBSOCKET_PORT)
         log.info("等待前端连接...")
         try:
             await asyncio.Future()  # 永久运行
@@ -95,4 +97,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         log.info("服务器已停止")
-
