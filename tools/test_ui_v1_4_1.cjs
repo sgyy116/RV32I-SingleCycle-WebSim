@@ -92,12 +92,28 @@ async function main() {
       return { status: s.status, text: s.statusText }
     })
     assert.deepEqual(error, { status: 'error', text: '错误' })
-    const failed = await p.evaluate(async () => {
+    await p.evaluate(async () => {
       const s = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator')
-      const ok = await s.compileAndLoad('this_is_not_an_instruction')
-      return { ok, status: s.status, text: s.statusText }
+      await s.compileAndLoad('this_is_not_an_instruction')
     })
-    assert.equal(failed.ok, false); assert.equal(failed.status, 'error'); assert.equal(failed.text, '编译失败')
+    // 请求发出不等于编译完成；必须等待真实后端的异步错误回包。
+    await p.waitForFunction(() => {
+      const s = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator')
+      return !s.compiling && s.compileStatus === 'error' && s.compileErrors.some(e => e.includes('this_is_not_an_instruction'))
+    })
+    const failed = await p.evaluate(() => {
+      const s = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator')
+      return { status: s.status, text: s.statusText, error: s.errorMessage }
+    })
+    assert.equal(failed.status, 'error')
+    assert.equal(failed.text, '错误')
+    assert(failed.error.includes('this_is_not_an_instruction'))
+    await load(p, 'addi t0,zero,42')
+    const recovered = await p.evaluate(() => {
+      const s = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('simulator')
+      return { status: s.status, error: s.errorMessage, errors: s.compileErrors, compiling: s.compiling }
+    })
+    assert.deepEqual(recovered, { status: 'idle', error: '', errors: [], compiling: false })
   })
   await check('左右标签等宽分布并充分利用导航宽度', async p => {
     for (const width of [1920, 1366, 1024]) {

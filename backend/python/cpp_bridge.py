@@ -97,7 +97,7 @@ class CppSimulatorBridge:
     async def shutdown(self) -> None:
         if self.proc and self.proc.returncode is None:
             try:
-                self.proc.stdin.write(json.dumps({"cmd": "shutdown"}) + "\n")
+                self.proc.stdin.write((json.dumps({"cmd": "shutdown"}) + "\n").encode("utf-8"))
                 await self.proc.stdin.drain()
             except Exception:
                 pass
@@ -106,6 +106,7 @@ class CppSimulatorBridge:
             except Exception:
                 try:
                     self.proc.kill()
+                    await self.proc.wait()
                 except Exception:
                     pass
         self.proc = None

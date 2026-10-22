@@ -1,4 +1,4 @@
-# Ubuntu 服务器部署（v1.5.1）
+# Ubuntu 服务器部署（v1.5.2）
 
 目标配置：4 vCPU、8 GB 内存、200 GB 磁盘，外部只开放 TCP 80/443。需要一条解析到服务器的域名记录，以及服务器 SSH 权限。以下命令在服务器执行；将 `YOUR_DOMAIN` 换成实际域名。仓库代码、前端和 C++ 核心应使用同一个提交构建。
 
@@ -8,7 +8,7 @@
 sudo apt update
 sudo apt install -y git g++ python3 python3-venv nginx
 sudo useradd --system --home /opt/rv32i --shell /usr/sbin/nologin rv32i
-sudo git clone --branch v1.5.1 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git /opt/rv32i
+sudo git clone --branch v1.5.2 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git /opt/rv32i
 sudo chown -R "$USER":"$USER" /opt/rv32i
 cd /opt/rv32i
 ```
@@ -83,10 +83,10 @@ python3 tools/load_test_100.py --url https://实际域名/ --users 100 --hold 30
 
 ## 5. 本地 Ubuntu 预演
 
-可以先在本地 Ubuntu 安装并运行同一份源码；若 Ubuntu 是虚拟机，尽量分配与目标服务器相同的 4 vCPU、8 GB 内存。在 Ubuntu 上检出 v1.5.1：
+可以先在本地 Ubuntu 安装并运行同一份源码；若 Ubuntu 是虚拟机，尽量分配与目标服务器相同的 4 vCPU、8 GB 内存。在 Ubuntu 上检出 v1.5.2：
 
 ```bash
-git clone --branch v1.5.1 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git ~/rv32i
+git clone --branch v1.5.2 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git ~/rv32i
 ```
 
 若前端已经在 Fedora 上构建，可将 `frontend/dist` 传到 Ubuntu，避免在 Ubuntu 上安装 Node.js/npm；不要传输 Fedora 的虚拟环境或 C++ 二进制。在 Fedora 项目目录执行：
@@ -112,10 +112,10 @@ g++ -std=c++17 -O2 -I backend/cpp/src backend/cpp/src/main.cpp backend/cpp/src/r
 RV32I_SERVER_MODE=1 RV32I_BIND_HOST=127.0.0.1 .venv/bin/python -B backend/python/server.py
 ```
 
-在第二个终端执行直连测试（绕过 Nginx，因此显式指定独立 WebSocket 端口）：
+v1.5.2 已直接提供 8081 的同源 `/ws`。浏览器打开 `http://127.0.0.1:8081/` 即可联调；在第二个终端执行直连测试：
 
 ```bash
-.venv/bin/python -B tools/load_test_100.py --url http://127.0.0.1:8081/ --ws-url ws://127.0.0.1:8080/ws --users 100 --hold 30 --source-file backend/asm_examples/fibonacci.s
+.venv/bin/python -B tools/load_test_100.py --url http://127.0.0.1:8081/ --users 100 --hold 30 --source-file backend/asm_examples/fibonacci.s
 ```
 
 这能检查 Ubuntu 环境下 100 个会话是否同时发起编译、完成加载和单步。若要验证正式部署链路，应先配置本机 Nginx，然后将 `--url` 指向 Nginx 的地址并去掉 `--ws-url`。压测客户端与服务进程同机运行会争用 CPU 和内存；性能验收应在目标服务器上运行服务、在另一台机器发起测试。

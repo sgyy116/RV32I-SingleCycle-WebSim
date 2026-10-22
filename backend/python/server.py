@@ -46,9 +46,13 @@ SESSIONS: dict = {}
 
 async def handle_connection(conn):
     """单个 WebSocket 客户端会话（websockets 连接处理器）"""
+    await handle_session(WebSocketAdapter(conn))
+
+
+async def handle_session(ws):
+    """两个 WebSocket 入口共享会话隔离、消息处理和退出清理。"""
     session_id = str(uuid.uuid4())[:8]
     session_dir = tempfile.mkdtemp(prefix=f"rv32i-{session_id}-")
-    ws = WebSocketAdapter(conn)
     log.info("客户端连接 (session=%s)", session_id)
 
     handler = ConnectionHandler(ws, session_dir)
@@ -71,7 +75,7 @@ async def handle_connection(conn):
 
 async def main():
     # 同一事件循环启动 aiohttp 编译服务
-    runner = await start_http_server(config.COMPILE_PORT)
+    runner = await start_http_server(config.COMPILE_PORT, handle_session)
     log.info("HTTP 服务已启动: http://%s:%d", config.BIND_HOST, config.COMPILE_PORT)
 
     # 启动 WebSocket 服务器

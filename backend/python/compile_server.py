@@ -22,6 +22,7 @@ from aiohttp import web
 
 import config
 import asm
+from ws_adapter import AiohttpWebSocketAdapter
 
 log = logging.getLogger("compile_server")
 
@@ -165,8 +166,32 @@ async def handle_index(request: web.Request) -> web.Response:
     return web.FileResponse(index)
 
 
-def build_app() -> web.Application:
+def build_app(session_handler=None) -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
+
+    if session_handler is not None:
+        connections = set()
+
+        async def close_connections(_app):
+            # 主动结束长连接，让会话退出并回收模拟器，不等待 HTTP 停服超时。
+            await asyncio.gather(*(socket.close(code=1001, message=b'Server shutdown')
+                                   for socket in list(connections)))
+
+        app.on_shutdown.append(close_connections)
+
+        async def handle_websocket(request):
+            socket = web.WebSocketResponse(max_msg_size=4 * 1024 * 1024)
+            await socket.prepare(request)
+            connections.add(socket)
+            try:
+                await session_handler(AiohttpWebSocketAdapter(socket))
+            finally:
+                connections.discard(socket)
+                await socket.close()
+            return socket
+
+        # 必须先于静态目录注册，避免 /ws 被当作静态文件返回 404。
+        app.router.add_get('/ws', handle_websocket)
 
     # HTTP 编译 API 仅供本地调试；服务器模式走 WebSocket 会话内编译。
     if not config.SERVER_MODE:
@@ -190,9 +215,9 @@ def build_app() -> web.Application:
     return app
 
 
-async def start_http_server(port: int):
+async def start_http_server(port: int, session_handler=None):
     """启动 aiohttp 编译服务（并入调用方事件循环）。返回 AppRunner，供 cleanup。"""
-    runner = web.AppRunner(build_app())
+    runner = web.AppRunner(build_app(session_handler))
     await runner.setup()
     site = web.TCPSite(runner, config.BIND_HOST, port)
     await site.start()

@@ -7,6 +7,30 @@
 # ============================================================================
 
 from websockets.exceptions import ConnectionClosed
+from aiohttp import WSMsgType
+
+
+class AiohttpWebSocketAdapter:
+    """同源 HTTP 升级连接，复用与独立 WebSocket 端口相同的会话接口。"""
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    async def send_text(self, text: str) -> None:
+        await self.conn.send_str(text)
+
+    async def recv_text(self):
+        while True:
+            msg = await self.conn.receive()
+            if msg.type == WSMsgType.TEXT:
+                return msg.data
+            if msg.type == WSMsgType.BINARY:
+                return msg.data.decode('utf-8', errors='replace')
+            if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED, WSMsgType.ERROR):
+                return None
+
+    async def close(self) -> None:
+        await self.conn.close()
 
 
 class WebSocketAdapter:

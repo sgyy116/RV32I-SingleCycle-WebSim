@@ -87,6 +87,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
       case 'loaded':
         compiling.value = false
         compileStatus.value = 'success'
+        compileErrors.value = []
+        errorMessage.value = ''
         status.value = 'idle'
         statusText.value = `程序已加载 entry=${msg.entry}`
         programEntry.value = msg.entry ?? '0x80000000'
@@ -159,6 +161,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     compiling.value = true
     compileStatus.value = 'compiling'
     compileErrors.value = []
+    errorMessage.value = ''
     statusText.value = '正在编译…'
     try {
       // 每个连接在自己的临时目录中编译，浏览器无需接触服务器文件路径。
