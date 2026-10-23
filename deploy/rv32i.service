@@ -12,6 +12,9 @@ Environment=RV32I_BIND_HOST=127.0.0.1
 Environment=RV32I_SERVER_MODE=1
 Environment=WS_PORT=8080
 Environment=COMPILE_PORT=8081
+Environment=RV32I_MAX_SESSIONS=20
+Environment=RV32I_MAX_WAITING=100
+Environment=RV32I_SESSION_IDLE_SECONDS=1800
 ExecStart=/opt/rv32i/.venv/bin/python -B server.py
 Restart=on-failure
 RestartSec=3

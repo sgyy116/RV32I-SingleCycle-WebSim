@@ -23,6 +23,11 @@ COMPILE_PORT = int(os.environ.get("COMPILE_PORT", 8081))
 BIND_HOST = os.environ.get("RV32I_BIND_HOST", "0.0.0.0")
 SERVER_MODE = os.environ.get("RV32I_SERVER_MODE", "0") == "1"
 
+# 初始保护阈值，不代表经过压测确认的承载能力；两个 WebSocket 入口共用。
+MAX_SESSIONS = max(1, int(os.environ.get("RV32I_MAX_SESSIONS", "20")))
+MAX_WAITING = max(0, int(os.environ.get("RV32I_MAX_WAITING", "100")))
+SESSION_IDLE_SECONDS = max(1, int(os.environ.get("RV32I_SESSION_IDLE_SECONDS", "1800")))
+
 # 模拟器可执行文件路径（按平台选择；build 里可能残留旧版的 Linux 可执行文件）
 SIM_PATH = os.environ.get("RV32I_SIM_PATH")
 if SIM_PATH is None:

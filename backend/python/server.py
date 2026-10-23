@@ -33,6 +33,7 @@ import config
 from compile_server import start_http_server
 from ws_adapter import WebSocketAdapter
 from ws_handler import ConnectionHandler
+from admission import get_admission
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,26 +52,67 @@ async def handle_connection(conn):
 
 async def handle_session(ws):
     """两个 WebSocket 入口共享会话隔离、消息处理和退出清理。"""
-    session_id = str(uuid.uuid4())[:8]
-    session_dir = tempfile.mkdtemp(prefix=f"rv32i-{session_id}-")
-    log.info("客户端连接 (session=%s)", session_id)
-
-    handler = ConnectionHandler(ws, session_dir)
-    SESSIONS[session_id] = handler
+    session_id = uuid.uuid4().hex
+    gate = get_admission()
+    ticket = gate.join(session_id, ws)
+    if ticket is None:
+        await ws.send_text(json.dumps({'type': 'queue_full', 'message': '等待人数已达上限，请稍后重新加入'}))
+        await ws.close()
+        return
+    handler = None
+    session_dir = None
     try:
-        await handler.send({"type": "ready", "version": "1.0"})
+        if not ticket.done():
+            await gate.notify()
+            receiver = asyncio.create_task(ws.recv_text())
+            try:
+                while not ticket.done():
+                    done, _ = await asyncio.wait((ticket, receiver), return_when=asyncio.FIRST_COMPLETED)
+                    if receiver in done:
+                        raw = receiver.result()
+                        if raw is None:
+                            return
+                        try:
+                            message = json.loads(raw)
+                        except (ValueError, TypeError):
+                            message = None
+                        if isinstance(message, dict) and message.get('type') == 'cancel_queue':
+                            await ws.close()
+                            return
+                        # 等待期间的命令不执行、不缓存；准入后需由用户重新提交。
+                        if not ticket.done():
+                            await gate.notify(force_identity=session_id)
+                        receiver = asyncio.create_task(ws.recv_text())
+            finally:
+                receiver.cancel()
+                await asyncio.gather(receiver, return_exceptions=True)
+        session_dir = tempfile.mkdtemp(prefix=f"rv32i-{session_id}-")
+        handler = ConnectionHandler(ws, session_dir, session_id)
+        SESSIONS[session_id] = handler
+        log.info("客户端进入实验 (session=%s)", session_id)
+        await handler.send_ready()
         while True:
-            raw = await ws.recv_text()
+            try:
+                raw = await asyncio.wait_for(ws.recv_text(), config.SESSION_IDLE_SECONDS)
+            except asyncio.TimeoutError:
+                await handler.send({'type': 'session_expired', 'message': '实验长时间未操作，已释放名额，请重新加入'})
+                await ws.close()
+                break
             if raw is None:
                 break
             await handler.handle_message(raw)
     except Exception as e:  # noqa: BLE001
         log.warning("连接异常 %s: %s", session_id, e)
     finally:
-        await handler.close()
-        SESSIONS.pop(session_id, None)
-        shutil.rmtree(session_dir, ignore_errors=True)
-        log.info("会话结束: %s", session_id)
+        try:
+            if handler is not None:
+                await handler.close()
+        finally:
+            SESSIONS.pop(session_id, None)
+            if session_dir is not None:
+                shutil.rmtree(session_dir, ignore_errors=True)
+            await gate.release(session_id)
+            log.info("会话结束: %s", session_id)
 
 
 async def main():

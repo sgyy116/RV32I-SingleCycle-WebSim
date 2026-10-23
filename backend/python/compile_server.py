@@ -4,7 +4,7 @@
 # 端点:
 #   POST /api/compile  输入 {source: 汇编源码文本}
 #   优先使用 RISC-V 交叉编译器；缺失时回退到 Python 微型汇编器（asm.py）
-#   输出: {"success": true, "elf_path": "...", "disassembly": [...], "errors": []}
+#   HTTP 仅返回编译结果预览；文件路径仅限会话内部使用。
 #
 # 与 WebSocket 服务器（server.py）共用同一事件循环；compile_source 为同步
 # 函数（内含 subprocess），在 handler 内通过 asyncio.to_thread 放入线程池。
@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -23,6 +24,7 @@ from aiohttp import web
 import config
 import asm
 from ws_adapter import AiohttpWebSocketAdapter
+from network_probe import register_network_routes
 
 log = logging.getLogger("compile_server")
 
@@ -139,13 +141,21 @@ async def handle_compile(request: web.Request) -> web.Response:
     try:
         body = await request.json()
         source = body.get("source", "")
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError("汇编源码必须是非空字符串")
     except Exception:  # noqa: BLE001
         return web.json_response(
             {"success": False, "errors": ["无效的请求体"]}, status=400
         )
 
-    # compile_source 为同步函数（内含 subprocess），放入线程池避免阻塞事件循环
-    result = await asyncio.to_thread(compile_source, source)
+    # 本地调试也按请求隔离，目录在线程内持有，取消 HTTP 请求不影响清理。
+    def compile_preview():
+        with tempfile.TemporaryDirectory(prefix="rv32i-preview-") as directory:
+            result = compile_source(source, directory)
+            result.pop("elf_path", None)
+            return result
+
+    result = await asyncio.to_thread(compile_preview)
     return web.json_response(result)
 
 
@@ -168,6 +178,7 @@ async def handle_index(request: web.Request) -> web.Response:
 
 def build_app(session_handler=None) -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
+    register_network_routes(app)
 
     if session_handler is not None:
         connections = set()
@@ -180,7 +191,7 @@ def build_app(session_handler=None) -> web.Application:
         app.on_shutdown.append(close_connections)
 
         async def handle_websocket(request):
-            socket = web.WebSocketResponse(max_msg_size=4 * 1024 * 1024)
+            socket = web.WebSocketResponse(max_msg_size=4 * 1024 * 1024, heartbeat=20)
             await socket.prepare(request)
             connections.add(socket)
             try:

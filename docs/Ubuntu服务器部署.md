@@ -1,4 +1,4 @@
-# Ubuntu 服务器部署（v1.5.2）
+# Ubuntu 服务器部署（v1.5.3）
 
 目标配置：4 vCPU、8 GB 内存、200 GB 磁盘，外部只开放 TCP 80/443。需要一条解析到服务器的域名记录，以及服务器 SSH 权限。以下命令在服务器执行；将 `YOUR_DOMAIN` 换成实际域名。仓库代码、前端和 C++ 核心应使用同一个提交构建。
 
@@ -8,7 +8,7 @@
 sudo apt update
 sudo apt install -y git g++ python3 python3-venv nginx
 sudo useradd --system --home /opt/rv32i --shell /usr/sbin/nologin rv32i
-sudo git clone --branch v1.5.2 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git /opt/rv32i
+sudo git clone --branch v1.5.3 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git /opt/rv32i
 sudo chown -R "$USER":"$USER" /opt/rv32i
 cd /opt/rv32i
 ```
@@ -53,6 +53,12 @@ curl -I http://127.0.0.1:8081/
 
 ## 3. Nginx 与 HTTPS
 
+### 实验名额与网络检测
+
+服务默认允许 20 个活动实验、100 个等待连接；30 分钟无用户命令自动释放实验。systemd 中通过 `RV32I_MAX_SESSIONS`、`RV32I_MAX_WAITING`、`RV32I_SESSION_IDLE_SECONDS` 调整，修改后需 daemon-reload 并重启服务。20 是初始保护值，不是压测结论；100 人同时活动测试前需将活动上限明确设为 100，并观察资源使用。排队基于单进程，暂不部署多个 Python 副本。
+
+页面底栏“网络检测”走同源 `/api/network/*`，无需申请额外端口。学校网关需放行 GET、POST，并关闭该路径的缓存、压缩及请求/响应缓冲；随附 Nginx 模板已有对应配置。测速手动触发，小样本结果仅供参考，不能把本地回环测速当作校园网带宽结果。
+
 ```bash
 sudo sed 's/YOUR_DOMAIN/实际域名/g' deploy/rv32i.nginx.conf | sudo tee /etc/nginx/sites-available/rv32i.conf >/dev/null
 sudo ln -s /etc/nginx/sites-available/rv32i.conf /etc/nginx/sites-enabled/rv32i.conf
@@ -83,10 +89,10 @@ python3 tools/load_test_100.py --url https://实际域名/ --users 100 --hold 30
 
 ## 5. 本地 Ubuntu 预演
 
-可以先在本地 Ubuntu 安装并运行同一份源码；若 Ubuntu 是虚拟机，尽量分配与目标服务器相同的 4 vCPU、8 GB 内存。在 Ubuntu 上检出 v1.5.2：
+可以先在本地 Ubuntu 安装并运行同一份源码；若 Ubuntu 是虚拟机，尽量分配与目标服务器相同的 4 vCPU、8 GB 内存。在 Ubuntu 上检出 v1.5.3：
 
 ```bash
-git clone --branch v1.5.2 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git ~/rv32i
+git clone --branch v1.5.3 --depth 1 https://github.com/sgyy116/RV32I-SingleCycle-WebSim.git ~/rv32i
 ```
 
 若前端已经在 Fedora 上构建，可将 `frontend/dist` 传到 Ubuntu，避免在 Ubuntu 上安装 Node.js/npm；不要传输 Fedora 的虚拟环境或 C++ 二进制。在 Fedora 项目目录执行：
@@ -109,10 +115,10 @@ g++ -std=c++17 -O2 -I backend/cpp/src backend/cpp/src/main.cpp backend/cpp/src/r
 然后在一个终端运行：
 
 ```bash
-RV32I_SERVER_MODE=1 RV32I_BIND_HOST=127.0.0.1 .venv/bin/python -B backend/python/server.py
+RV32I_SERVER_MODE=1 RV32I_BIND_HOST=127.0.0.1 RV32I_MAX_SESSIONS=100 .venv/bin/python -B backend/python/server.py
 ```
 
-v1.5.2 已直接提供 8081 的同源 `/ws`。浏览器打开 `http://127.0.0.1:8081/` 即可联调；在第二个终端执行直连测试：
+v1.5.3 已直接提供 8081 的同源 `/ws`。浏览器打开 `http://127.0.0.1:8081/` 即可联调；在第二个终端执行直连测试：
 
 ```bash
 .venv/bin/python -B tools/load_test_100.py --url http://127.0.0.1:8081/ --users 100 --hold 30 --source-file backend/asm_examples/fibonacci.s

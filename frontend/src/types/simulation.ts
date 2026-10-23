@@ -108,6 +108,10 @@ export interface CycleState {
 /** 后端推送到前端的消息 */
 export interface WsMessage {
   type: string
+  session_id?: string
+  position?: number
+  active?: number
+  capacity?: number
   cycle?: number
   state?: CycleState
   message?: string

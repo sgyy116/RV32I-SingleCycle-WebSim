@@ -20,25 +20,46 @@ export function useWebSocket(options: UseWebSocketOptions) {
   let ws: WebSocket | null = null
   let reconnectTimer: number | null = null
   let shouldReconnect = true
+  let handshakeTimer: number | null = null
+  let reconnectAttempts = 0
+
+  function clearHandshake() {
+    if (handshakeTimer !== null) window.clearTimeout(handshakeTimer)
+    handshakeTimer = null
+  }
+
+  function detach(socket: WebSocket) {
+    socket.onclose = null
+    socket.onmessage = null
+    socket.onopen = null
+    socket.onerror = null
+  }
 
   function connect() {
-    if (connecting.value) return
+    if (connecting.value || ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) return
+    if (ws) { detach(ws); ws.close(); ws = null }
     connecting.value = true
+    let socket: WebSocket
     try {
-      ws = new WebSocket(options.url)
+      socket = new WebSocket(options.url)
+      ws = socket
     } catch (e) {
       connecting.value = false
       scheduleReconnect()
       return
     }
 
-    ws.onopen = () => {
+    socket.onopen = () => {
+      if (ws !== socket) return
+      clearHandshake()
+      reconnectAttempts = 0
       connected.value = true
       connecting.value = false
       options.onOpen?.()
     }
 
-    ws.onmessage = (ev) => {
+    socket.onmessage = (ev) => {
+      if (ws !== socket) return
       try {
         const msg = JSON.parse(ev.data as string)
         options.onMessage(msg)
@@ -47,26 +68,37 @@ export function useWebSocket(options: UseWebSocketOptions) {
       }
     }
 
-    ws.onclose = () => {
+    socket.onclose = () => {
+      if (ws !== socket) return
+      clearHandshake()
+      ws = null
       connected.value = false
       connecting.value = false
       options.onClose?.()
       scheduleReconnect()
     }
 
-    ws.onerror = () => {
+    socket.onerror = () => {
+      if (ws !== socket) return
       connected.value = false
-      connecting.value = false
+      // 浏览器随后发送 close；保持握手标记，避免重试创建第二条连接。
     }
+    handshakeTimer = window.setTimeout(() => {
+      handshakeTimer = null
+      if (ws === socket && socket.readyState === WebSocket.CONNECTING) socket.close()
+    }, 10000)
   }
 
   function scheduleReconnect() {
     if (!shouldReconnect) return
-    if (reconnectTimer) return
+    if (reconnectTimer !== null) return
+    // 连续失败逐步退避并加入抖动，减少全班网络恢复时的同时重连。
+    const base = Math.min(30000, 1500 * 2 ** Math.min(reconnectAttempts++, 5))
+    const delay = Math.min(30000, base * (1 + Math.random() * 0.2))
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = null
       connect()
-    }, 1500)
+    }, delay)
   }
 
   function send(payload: unknown) {
@@ -79,16 +111,27 @@ export function useWebSocket(options: UseWebSocketOptions) {
 
   function close() {
     shouldReconnect = false
-    if (reconnectTimer) window.clearTimeout(reconnectTimer)
+    if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
+    reconnectTimer = null
+    clearHandshake()
     if (ws) {
-      ws.onclose = null
+      detach(ws)
       ws.close()
       ws = null
     }
     connected.value = false
+    connecting.value = false
+  }
+
+  function reconnect() {
+    shouldReconnect = true
+    reconnectAttempts = 0
+    if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
+    reconnectTimer = null
+    connect()
   }
 
   connect()
 
-  return { connected, connecting, send, close }
+  return { connected, connecting, send, close, reconnect }
 }

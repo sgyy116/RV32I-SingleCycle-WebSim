@@ -17,6 +17,9 @@ const WS_URL =
 export const useSimulatorStore = defineStore('simulator', () => {
   // ---------------- 连接状态 ----------------
   const connected = ref(false)
+  const sessionId = ref('')
+  const admission = ref<'connecting' | 'queued' | 'ready' | 'full' | 'cancelled' | 'expired'>('connecting')
+  const queuePosition = ref(0)
   const status = ref<SimStatus>('idle')
   const statusText = ref('程序未加载')
 
@@ -47,13 +50,16 @@ export const useSimulatorStore = defineStore('simulator', () => {
     url: WS_URL,
     onMessage: handleMessage,
     onOpen: () => {
-      connected.value = true
-      statusText.value = '程序未加载'
+      connected.value = false
+      admission.value = 'connecting'
+      statusText.value = '正在申请实验名额…'
     },
     onClose: () => {
       connected.value = false
-      if (compiling.value) {
-        compiling.value = false
+      const wasCompiling = compiling.value
+      clearSession()
+      admission.value = 'connecting'
+      if (wasCompiling) {
         compileStatus.value = 'error'
         compileErrors.value = ['连接中断，请重试']
       }
@@ -66,7 +72,25 @@ export const useSimulatorStore = defineStore('simulator', () => {
     switch (msg.type) {
       case 'ready':
         connected.value = true
+        if (msg.session_id !== sessionId.value) clearSession()
+        sessionId.value = msg.session_id ?? ''
+        admission.value = 'ready'
+        queuePosition.value = 0
         statusText.value = '程序未加载'
+        break
+      case 'queued':
+        connected.value = false
+        admission.value = 'queued'
+        queuePosition.value = msg.position ?? 1
+        statusText.value = `正在排队，前方 ${Math.max(0, queuePosition.value - 1)} 人`
+        break
+      case 'queue_full':
+      case 'session_expired':
+        ws.close()
+        connected.value = false
+        clearSession()
+        admission.value = msg.type === 'queue_full' ? 'full' : 'expired'
+        statusText.value = msg.message ?? '请重新加入实验'
         break
       case 'cycle_state':
         if (msg.state) pushState(msg.state)
@@ -96,6 +120,8 @@ export const useSimulatorStore = defineStore('simulator', () => {
         // 还停在旧程序最后一拍，看着像"新程序刚加载就执行过了"。
         // 波次 store 监听 cycleState 变 null，会跟着归零。
         clearTrace()
+        breakpoints.value = new Set()
+        memoryDump.value = null
         // 拉取反汇编列表
         ws.send({ type: 'get_disassembly', addr: programEntry.value, count: 256 })
         break
@@ -158,6 +184,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   // ---------------- 编译 + 加载 ----------------
   async function compileAndLoad(source: string) {
+    if (!connected.value) return false
     compiling.value = true
     compileStatus.value = 'compiling'
     compileErrors.value = []
@@ -184,7 +211,7 @@ export const useSimulatorStore = defineStore('simulator', () => {
     }
   }
 
-  // 用后端返回的 ELF 路径加载后拉取反汇编
+  // 拉取当前会话的反汇编
   async function fetchDisassembly(count = 200) {
     const sent = ws.send({ type: 'get_disassembly', addr: programEntry.value, count })
     return sent
@@ -218,6 +245,36 @@ export const useSimulatorStore = defineStore('simulator', () => {
     cycleCount.value = 0
   }
 
+  /** 连接关闭即失去后端实验；保留编辑器源码，清除所有失效的运行状态。 */
+  function clearSession() {
+    clearTrace()
+    sessionId.value = ''
+    queuePosition.value = 0
+    status.value = 'idle'
+    compiling.value = false
+    compileStatus.value = 'idle'
+    compileErrors.value = []
+    errorMessage.value = ''
+    breakpoints.value = new Set()
+    disassembly.value = []
+    memoryDump.value = null
+    programEntry.value = '0x80000000'
+  }
+
+  function leaveQueue() {
+    ws.close()
+    connected.value = false
+    clearSession()
+    admission.value = 'cancelled'
+    statusText.value = '已退出排队'
+  }
+
+  function joinQueue() {
+    admission.value = 'connecting'
+    statusText.value = '正在申请实验名额…'
+    ws.reconnect()
+  }
+
   function reset() {
     clearTrace()
     ws.send({ type: 'reset' })
@@ -244,6 +301,11 @@ export const useSimulatorStore = defineStore('simulator', () => {
 
   return {
     connectionUrl: WS_URL,
+    sessionId,
+    admission,
+    queuePosition,
+    leaveQueue,
+    joinQueue,
     connected,
     status,
     statusText,

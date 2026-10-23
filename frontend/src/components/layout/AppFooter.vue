@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { NConfigProvider, NSlider } from 'naive-ui'
 import { useSimulatorStore } from '@/stores/simulator'
 import { useWaveStore } from '@/stores/wave'
+import NetworkCheck from './NetworkCheck.vue'
 
 defineProps<{ zoom: number; zoomMin: number; zoomMax: number }>()
 const emit = defineEmits<{ 'update:zoom': [value: number]; 'reset-view': [] }>()
@@ -41,13 +42,16 @@ onUnmounted(() => heightObserver?.disconnect())
     <div class="footer-summary">
       <span class="footer-connection" :title="sim.connectionUrl">
         <span class="connection-dot" :class="sim.connected ? 'bg-green-500' : 'bg-red-500'"></span>
-        <span>{{ sim.connected ? '已连接' : '未连接' }}</span>
+        <span>{{ sim.connected ? '已连接' : sim.admission === 'queued' ? '等待中' : '未连接' }}</span>
       </span>
-      <span class="footer-status" :title="sim.errorMessage || sim.statusText"
+      <span class="footer-status" role="status" aria-live="polite" :title="sim.errorMessage || sim.statusText"
         :class="sim.status === 'halted' ? 'text-amber-400' : sim.status === 'error' ? 'text-red-400' : 'text-green-400'">
         {{ wave.playing ? '运行中' : sim.statusText }}
       </span>
     </div>
+    <button v-if="sim.admission === 'queued'" type="button" class="queue-action" @click="sim.leaveQueue()">退出排队</button>
+    <button v-if="['full', 'cancelled', 'expired'].includes(sim.admission)" type="button" class="queue-action" @click="sim.joinQueue()">重新加入</button>
+    <NetworkCheck />
     </div>
     <div class="footer-position">
     <div class="footer-execution">
@@ -70,6 +74,8 @@ onUnmounted(() => heightObserver?.disconnect())
 .footer-connection { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .connection-dot { width: 8px; height: 8px; border-radius: 50%; }
 .footer-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-action { flex-shrink: 0; padding: 3px 8px; border: 1px solid #fbbf24; border-radius: 5px; color: #fde68a; background: transparent; cursor: pointer; white-space: nowrap; }
+.queue-action:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
 .footer-execution { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; justify-content: flex-end; font-family: Consolas, monospace; }
 .footer-cycle, .footer-pc { flex-shrink: 0; white-space: nowrap; }
 .footer-pc, .footer-instruction { border-left: 1px solid #475569; padding-left: 8px; }

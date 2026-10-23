@@ -20,6 +20,7 @@ class CppSimulatorBridge:
     def __init__(self, exe_path: Optional[str] = None):
         self.exe_path = exe_path or config.SIM_PATH
         self.proc: Optional[asyncio.subprocess.Process] = None
+        self._command_lock = asyncio.Lock()
 
     @property
     def running(self) -> bool:
@@ -27,6 +28,7 @@ class CppSimulatorBridge:
 
     async def start(self, elf_path: str) -> Dict[str, Any]:
         """启动子进程并加载 ELF，返回 load_elf 响应"""
+        await self.shutdown()
         if not os.path.exists(self.exe_path):
             raise FileNotFoundError(
                 f"模拟器可执行文件不存在: {self.exe_path}，请先编译 C++ 后端"
@@ -37,10 +39,26 @@ class CppSimulatorBridge:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        return await self.send({"cmd": "load_elf", "path": elf_path})
+        try:
+            result = await self.send({"cmd": "load_elf", "path": elf_path})
+            if result.get("status") != "ok":
+                await self.shutdown()
+            return result
+        except BaseException:
+            await self.shutdown()
+            raise
 
     async def send(self, cmd: Dict[str, Any]) -> Dict[str, Any]:
         """发送 JSON 命令，等待一行 JSON 响应"""
+        async with self._command_lock:
+            try:
+                return await asyncio.wait_for(self._send_command(cmd), timeout=10)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                # 响应边界已经未知，不能让后续命令读到本次的残留输出。
+                await self.shutdown()
+                raise
+
+    async def _send_command(self, cmd: Dict[str, Any]) -> Dict[str, Any]:
         if not self.proc or not self.proc.stdin:
             raise RuntimeError("模拟器未启动")
         line = json.dumps(cmd, ensure_ascii=False) + "\n"
